@@ -1,0 +1,5 @@
+{
+  "name": "Zeroro Console",
+  "description": "B2B/B2G management console for the Zeroro environmental gamification platform. Manage campaigns, missions, and view analytics.",
+  "requestFramePermissions": []
+}
