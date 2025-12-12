@@ -1,6 +1,8 @@
+"use client";
+
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/UiKit';
-import { 
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/UiKit';
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
@@ -22,7 +24,7 @@ const dataAge = [
   { name: '50+', count: 150 },
 ];
 
-export const Analytics: React.FC = () => {
+export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
@@ -76,7 +78,7 @@ export const Analytics: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-      
+
       <Card>
          <CardContent className="p-6">
             <div className="flex justify-between items-center">
@@ -93,4 +95,4 @@ export const Analytics: React.FC = () => {
       </Card>
     </div>
   );
-};
+}

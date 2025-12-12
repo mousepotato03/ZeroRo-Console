@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
-import { Leaf } from 'lucide-react';
-import { Button, Input } from '../components/UiKit';
+"use client";
 
-export const Login: React.FC<{ onLogin: () => void; onBack: () => void }> = ({ onLogin, onBack }) => {
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { Button, Input } from '../components/UiKit';
+import { Logo } from '../components/Logo';
+
+export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,28 +18,30 @@ export const Login: React.FC<{ onLogin: () => void; onBack: () => void }> = ({ o
     // Simulate auth
     setTimeout(() => {
       setLoading(false);
-      onLogin();
+      router.push('/dashboard');
     }, 800);
+  };
+
+  const handleBack = () => {
+    router.push('/');
   };
 
   return (
     <div className="min-h-screen bg-white flex">
       {/* Left Side - Visual */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative overflow-hidden flex-col justify-between p-12 text-white">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=2874&auto=format&fit=crop')] bg-cover bg-center opacity-20"></div>
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-60"
+          style={{ backgroundImage: "url('/login-image.png')" }}
+        />
         <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-              <Leaf className="text-white w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">Zeroro</span>
-          </div>
+          <Logo variant="light" className="mb-8" onClick={handleBack} />
           <h2 className="text-4xl font-bold tracking-tight max-w-lg leading-tight">
             Manage your environmental impact with AI-powered verification.
           </h2>
         </div>
         <div className="relative z-10 text-slate-400 text-sm">
-          &copy; 2024 Zeroro Inc. All rights reserved.
+          &copy; 2025 Zeroro Inc. All rights reserved.
         </div>
       </div>
 
@@ -47,20 +54,20 @@ export const Login: React.FC<{ onLogin: () => void; onBack: () => void }> = ({ o
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <Input 
-              label="Work Email" 
-              type="email" 
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              required 
+            <Input
+              label="Work Email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
               placeholder="name@organization.com"
             />
-            <Input 
-              label="Password" 
-              type="password" 
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              required 
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
             />
             <Button type="submit" className="w-full h-11 text-base shadow-lg shadow-emerald-500/20" isLoading={loading}>
               Sign In to Console
@@ -68,7 +75,7 @@ export const Login: React.FC<{ onLogin: () => void; onBack: () => void }> = ({ o
           </form>
 
           <div className="text-center pt-4">
-            <button onClick={onBack} className="text-sm text-slate-500 hover:text-emerald-600 font-medium">
+            <button onClick={handleBack} className="text-sm text-slate-500 hover:text-emerald-600 font-medium">
               &larr; Back to Landing Page
             </button>
           </div>
@@ -76,4 +83,4 @@ export const Login: React.FC<{ onLogin: () => void; onBack: () => void }> = ({ o
       </div>
     </div>
   );
-};
+}

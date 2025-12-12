@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Recurse -Directory)",
+      "Bash(Where-Object {$_FullName -notlike \"*next_migration*\"})",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(npm install:*)",
+      "Bash(Copy-Item -Path \"C:\\Users\\parks\\Projects\\ZeroRo-Console\\public\\favicon.png\" -Destination \"C:\\Users\\parks\\Projects\\ZeroRo-Console\\next_migration\\zeroro-console\\public\\favicon.png\" -Force)",
+      "Bash(Copy-Item -Path \"C:\\Users\\parks\\Projects\\ZeroRo-Console\\public\\hero-image.png\" -Destination \"C:\\Users\\parks\\Projects\\ZeroRo-Console\\next_migration\\zeroro-console\\public\\hero-image.png\" -Force)",
+      "Bash(Copy-Item -Path \"C:\\Users\\parks\\Projects\\ZeroRo-Console\\public\\login-image.png\" -Destination \"C:\\Users\\parks\\Projects\\ZeroRo-Console\\next_migration\\zeroro-console\\public\\login-image.png\" -Force)",
+      "Bash(powershell -Command:*)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}

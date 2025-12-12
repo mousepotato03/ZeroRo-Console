@@ -1,17 +1,17 @@
+"use client";
+
 import React, { useState } from 'react';
-import { 
-  Plus, 
-  MoreHorizontal, 
-  MapPin, 
-  Calendar, 
-  Sparkles, 
+import {
+  Plus,
+  MoreHorizontal,
+  MapPin,
+  Calendar,
+  Sparkles,
   Trash2,
-  ArrowUp,
   GripVertical
 } from 'lucide-react';
-import { Button, Card, CardContent, Input, Select, Badge } from '../components/UiKit';
-import { Campaign, CampaignStatus, Mission, MissionType } from '../types';
-import { generateCampaignDescription, suggestMissions } from '../services/geminiService';
+import { Button, Card, CardContent, Input, Select, Badge } from '../../components/UiKit';
+import { Campaign, CampaignStatus, Mission, MissionType } from '../../types';
 
 const MOCK_CAMPAIGNS: Campaign[] = [
   {
@@ -49,7 +49,7 @@ const MOCK_CAMPAIGNS: Campaign[] = [
   }
 ];
 
-export const Campaigns: React.FC = () => {
+export default function CampaignsPage() {
   const [view, setView] = useState<'list' | 'create'>('list');
 
   return (
@@ -61,7 +61,7 @@ export const Campaigns: React.FC = () => {
       )}
     </div>
   );
-};
+}
 
 // --- Subcomponent: List ---
 const CampaignList: React.FC<{ onViewCreate: () => void }> = ({ onViewCreate }) => {
@@ -141,20 +141,29 @@ const CampaignList: React.FC<{ onViewCreate: () => void }> = ({ onViewCreate }) 
 const CampaignBuilder: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
   const [step, setStep] = useState(1);
   const [loadingAI, setLoadingAI] = useState(false);
-  
+
   // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [region, setRegion] = useState('');
   const [missions, setMissions] = useState<Mission[]>([]);
 
-  // AI Handlers (Same logic, cleaner UI)
+  // AI Handlers - Now using API Routes
   const handleGenerateDesc = async () => {
     if (!title) return alert("Please enter a title first.");
     setLoadingAI(true);
     try {
-      const generated = await generateCampaignDescription(title, region || "Environment");
-      setDescription(generated);
+      const response = await fetch('/api/gemini/description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, keywords: region || "Environment" })
+      });
+      const data = await response.json();
+      if (data.description) {
+        setDescription(data.description);
+      } else if (data.error) {
+        alert("Failed to generate description");
+      }
     } catch (e) {
       alert("Failed to generate description");
     } finally {
@@ -166,8 +175,13 @@ const CampaignBuilder: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
      if (!title) return;
      setLoadingAI(true);
      try {
-       const rawJson = await suggestMissions(title);
-       const suggestions: string[] = JSON.parse(rawJson);
+       const response = await fetch('/api/gemini/missions', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ campaignTitle: title })
+       });
+       const data = await response.json();
+       const suggestions: string[] = data.missions || [];
        const newMissions = suggestions.map((s, idx) => ({
          id: `temp-${Date.now()}-${idx}`,
          title: s,
@@ -247,11 +261,11 @@ const CampaignBuilder: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
                   <Input label="Campaign Title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Save the Ocean" />
                   <Input label="Target Region" value={region} onChange={e => setRegion(e.target.value)} placeholder="e.g. Busan, Seoul" />
                 </div>
-                
+
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-sm font-medium text-slate-700">Description</label>
-                    <button 
+                    <button
                       onClick={handleGenerateDesc}
                       disabled={loadingAI || !title}
                       className="text-xs flex items-center gap-1 text-purple-600 hover:text-purple-700 font-medium disabled:opacity-50 px-2 py-1 bg-purple-50 rounded-md transition-colors"
@@ -260,7 +274,7 @@ const CampaignBuilder: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
                       Generate with AI
                     </button>
                   </div>
-                  <textarea 
+                  <textarea
                     className="w-full h-32 rounded-md border border-slate-200 bg-white p-3 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none transition-all placeholder:text-slate-400"
                     value={description}
                     onChange={e => setDescription(e.target.value)}
@@ -294,12 +308,12 @@ const CampaignBuilder: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
                     <div className="flex flex-col items-center pt-2 text-slate-300">
                        <GripVertical className="w-5 h-5 cursor-grab active:cursor-grabbing hover:text-slate-500" />
                     </div>
-                    
+
                     <div className="flex-1 space-y-4">
                       <div className="flex flex-col sm:flex-row gap-4">
                          <div className="flex-1">
                             <label className="text-xs font-medium text-slate-500 mb-1 block">Title</label>
-                            <Input 
+                            <Input
                               value={mission.title}
                               onChange={(e) => updateMission(mission.id, 'title', e.target.value)}
                               className="bg-slate-50"
@@ -307,12 +321,12 @@ const CampaignBuilder: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
                          </div>
                          <div className="w-full sm:w-40">
                             <label className="text-xs font-medium text-slate-500 mb-1 block">Type</label>
-                            <Select 
+                            <Select
                               options={[
                                 { label: 'Photo Upload', value: MissionType.PHOTO },
                                 { label: 'Quiz', value: MissionType.QUIZ },
                                 { label: 'GPS Check-in', value: MissionType.LOCATION },
-                              ]} 
+                              ]}
                               value={mission.type}
                               onChange={(e) => updateMission(mission.id, 'type', e.target.value)}
                               className="bg-slate-50"
@@ -320,8 +334,8 @@ const CampaignBuilder: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
                          </div>
                          <div className="w-24">
                             <label className="text-xs font-medium text-slate-500 mb-1 block">Points</label>
-                            <Input 
-                              type="number" 
+                            <Input
+                              type="number"
                               value={mission.points}
                               onChange={(e) => updateMission(mission.id, 'points', parseInt(e.target.value))}
                               className="bg-slate-50"
@@ -330,7 +344,7 @@ const CampaignBuilder: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
                       </div>
                       <div>
                         <label className="text-xs font-medium text-slate-500 mb-1 block">Description</label>
-                        <Input 
+                        <Input
                           value={mission.description}
                           onChange={(e) => updateMission(mission.id, 'description', e.target.value)}
                           className="bg-slate-50"
@@ -338,7 +352,7 @@ const CampaignBuilder: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
                       </div>
                     </div>
 
-                    <button 
+                    <button
                       onClick={() => deleteMission(mission.id)}
                       className="text-slate-300 hover:text-red-500 p-2 h-fit"
                     >

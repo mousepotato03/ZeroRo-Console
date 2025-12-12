@@ -1,12 +1,16 @@
+"use client";
+
 import React, { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Leaf, 
-  BarChart3, 
-  Settings, 
-  LogOut, 
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  Leaf,
+  BarChart3,
+  Settings,
+  LogOut,
   Menu,
-  X,
   CreditCard,
   Bell,
   Search,
@@ -16,27 +20,37 @@ import { Button } from './UiKit';
 
 interface LayoutProps {
   children: React.ReactNode;
-  activePage: string;
-  onNavigate: (page: string) => void;
   onLogout: () => void;
 }
 
-export const DashboardLayout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, onLogout }) => {
+export const DashboardLayout: React.FC<LayoutProps> = ({ children, onLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   const menuItems = [
-    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-    { id: 'campaigns', label: 'Campaigns', icon: Leaf },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'billing', label: 'Billing & API', icon: CreditCard },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
+    { id: 'campaigns', label: 'Campaigns', icon: Leaf, href: '/dashboard/campaigns' },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
+    { id: 'billing', label: 'Billing & API', icon: CreditCard, href: '/dashboard/billing' },
+    { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
   ];
+
+  const getActivePage = () => {
+    if (pathname === '/dashboard') return 'dashboard';
+    if (pathname.includes('/campaigns')) return 'campaigns';
+    if (pathname.includes('/analytics')) return 'analytics';
+    if (pathname.includes('/billing')) return 'billing';
+    if (pathname.includes('/settings')) return 'settings';
+    return 'dashboard';
+  };
+
+  const activePage = getActivePage();
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans">
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
@@ -51,9 +65,7 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children, activePage, o
           {/* Logo Area */}
           <div className="h-16 flex items-center px-6 border-b border-slate-800">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <Leaf className="text-white w-5 h-5" />
-              </div>
+              <Image src="/favicon.png" alt="Zeroro Logo" width={32} height={32} className="object-contain" />
               <span className="text-lg font-bold tracking-tight">Zeroro</span>
             </div>
           </div>
@@ -62,12 +74,10 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children, activePage, o
           <nav className="flex-1 px-4 py-6 space-y-1">
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 px-2">Menu</div>
             {menuItems.map((item) => (
-              <button
+              <Link
                 key={item.id}
-                onClick={() => {
-                  onNavigate(item.id);
-                  setIsMobileMenuOpen(false);
-                }}
+                href={item.href}
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group ${
                   activePage === item.id
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20'
@@ -76,7 +86,7 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children, activePage, o
               >
                 <item.icon className={`w-5 h-5 transition-colors ${activePage === item.id ? 'text-white' : 'text-slate-500 group-hover:text-white'}`} />
                 {item.label}
-              </button>
+              </Link>
             ))}
           </nav>
 
@@ -91,7 +101,7 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children, activePage, o
                   <p className="text-xs text-slate-500 truncate">admin@zeroro.io</p>
                 </div>
              </div>
-            <button 
+            <button
               onClick={onLogout}
               className="w-full flex items-center gap-2 px-2 text-xs font-medium text-slate-400 hover:text-red-400 transition-colors"
             >
@@ -118,9 +128,9 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children, activePage, o
           <div className="flex items-center gap-4">
             <div className="relative hidden md:block">
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-               <input 
-                  type="text" 
-                  placeholder="Search..." 
+               <input
+                  type="text"
+                  placeholder="Search..."
                   className="pl-9 pr-4 h-9 w-64 rounded-full border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all"
                />
             </div>

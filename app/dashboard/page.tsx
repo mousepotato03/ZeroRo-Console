@@ -1,21 +1,23 @@
+"use client";
+
 import React from 'react';
-import { 
-  Users, 
-  Target, 
-  Trophy, 
+import {
+  Users,
+  Target,
+  Trophy,
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
   Activity
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/UiKit';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   BarChart,
   Bar
@@ -61,7 +63,7 @@ const KPICard = ({ title, value, icon: Icon, trend, trendUp }: any) => (
   </Card>
 );
 
-export const Dashboard: React.FC = () => {
+export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -83,30 +85,30 @@ export const Dashboard: React.FC = () => {
 
       {/* KPI Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPICard 
-          title="Total Participants" 
-          value={summary.totalParticipants.toLocaleString()} 
+        <KPICard
+          title="Total Participants"
+          value={summary.totalParticipants.toLocaleString()}
           icon={Users}
           trend="12.5%"
           trendUp={true}
         />
-        <KPICard 
-          title="Missions Completed" 
-          value={summary.totalMissionsCompleted.toLocaleString()} 
+        <KPICard
+          title="Missions Completed"
+          value={summary.totalMissionsCompleted.toLocaleString()}
           icon={Target}
           trend="8.2%"
           trendUp={true}
         />
-        <KPICard 
-          title="Points Distributed" 
-          value={`${(summary.totalPointsDistributed / 1000).toFixed(1)}k`} 
+        <KPICard
+          title="Points Distributed"
+          value={`${(summary.totalPointsDistributed / 1000).toFixed(1)}k`}
           icon={Trophy}
           trend="2.1%"
           trendUp={false}
         />
-        <KPICard 
-          title="Active Campaigns" 
-          value={summary.totalCampaigns} 
+        <KPICard
+          title="Active Campaigns"
+          value={summary.totalCampaigns}
           icon={Activity}
           trend="Stable"
           trendUp={true}
@@ -133,7 +135,7 @@ export const Dashboard: React.FC = () => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dy={10} />
                     <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dx={-10} />
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                       itemStyle={{ color: '#0f172a', fontSize: '14px', fontWeight: 600 }}
                       cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
@@ -178,7 +180,7 @@ export const Dashboard: React.FC = () => {
                        </div>
                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-slate-900">John Doe completed "Clean Up"</p>
-                          <p className="text-xs text-slate-400">2 minutes ago • Seoul</p>
+                          <p className="text-xs text-slate-400">2 minutes ago - Seoul</p>
                        </div>
                     </div>
                   ))}
@@ -189,4 +191,4 @@ export const Dashboard: React.FC = () => {
       </div>
     </div>
   );
-};
+}
