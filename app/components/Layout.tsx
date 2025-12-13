@@ -1,22 +1,25 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Leaf,
-  BarChart3,
-  Settings,
   LogOut,
   Menu,
-  CreditCard,
   Bell,
   Search,
-  User
+  Building2
 } from 'lucide-react';
 import { Button } from './UiKit';
+import { createClient } from '@/app/lib/supabase/client';
+
+interface PartnerInfo {
+  organization_name: string;
+  email: string;
+}
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,129 +28,186 @@ interface LayoutProps {
 
 export const DashboardLayout: React.FC<LayoutProps> = ({ children, onLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [partnerInfo, setPartnerInfo] = useState<PartnerInfo | null>(null);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const fetchPartnerInfo = async () => {
+      const supabase = createClient();
+
+      // 로그인된 사용자 정보 조회
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        // partners 테이블에서 조직 정보 조회
+        const { data: partner } = await supabase
+          .from('partners')
+          .select('organization_name, email')
+          .eq('user_id', user.id)
+          .single();
+
+        if (partner) {
+          setPartnerInfo(partner);
+        }
+      }
+    };
+
+    fetchPartnerInfo();
+  }, []);
 
   const menuItems = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
     { id: 'campaigns', label: 'Campaigns', icon: Leaf, href: '/dashboard/campaigns' },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
-    { id: 'billing', label: 'Billing & API', icon: CreditCard, href: '/dashboard/billing' },
-    { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
   ];
 
-  const getActivePage = () => {
-    if (pathname === '/dashboard') return 'dashboard';
-    if (pathname.includes('/campaigns')) return 'campaigns';
-    if (pathname.includes('/analytics')) return 'analytics';
-    if (pathname.includes('/billing')) return 'billing';
-    if (pathname.includes('/settings')) return 'settings';
-    return 'dashboard';
+  const isActive = (href: string) => {
+    if (href === '/dashboard') return pathname === '/dashboard';
+    return pathname.startsWith(href);
   };
 
-  const activePage = getActivePage();
-
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans">
-      {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+    <div className="min-h-screen bg-slate-50 font-sans">
+      {/* Top Navigation Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            {/* Left Side: Logo & Nav */}
+            <div className="flex">
+              {/* Logo */}
+              <div className="flex-shrink-0 flex items-center">
+                <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                   <Image src="/favicon.png" alt="Zeroro" width={32} height={32} />
+                   <span className="text-xl font-bold tracking-tight text-slate-900">Zeroro</span>
+                </Link>
+              </div>
+              
+              {/* Nav Links (Desktop) */}
+              <div className="hidden sm:ml-10 sm:flex sm:space-x-8">
+                {menuItems.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${
+                      isActive(item.href)
+                        ? 'border-emerald-500 text-slate-900'
+                        : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                    }`}
+                  >
+                    <item.icon className="w-4 h-4 mr-2" />
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
 
-      {/* Sidebar - Dark Theme */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:block shadow-xl
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="h-full flex flex-col">
-          {/* Logo Area */}
-          <div className="h-16 flex items-center px-6 border-b border-slate-800">
-            <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <Image src="/favicon.png" alt="Zeroro Logo" width={32} height={32} className="object-contain" />
-              <span className="text-lg font-bold tracking-tight">Zeroro</span>
-            </Link>
-          </div>
+            {/* Right Side: Actions & Profile */}
+            <div className="hidden sm:ml-6 sm:flex sm:items-center gap-4">
+               {/* Search */}
+               <div className="relative">
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                 <input
+                    type="text"
+                    placeholder="Search..."
+                    className="pl-9 pr-4 h-9 w-64 rounded-full border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all"
+                 />
+               </div>
 
-          {/* Nav Items */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 px-2">Menu</div>
-            {menuItems.map((item) => (
-              <Link
-                key={item.id}
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group ${
-                  activePage === item.id
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
+               {/* Notifications */}
+               <button className="relative p-2 text-slate-400 hover:text-slate-500 transition-colors">
+                 <span className="sr-only">View notifications</span>
+                 <Bell className="w-5 h-5" />
+                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+               </button>
+
+               {/* User Profile */}
+               <div className="h-8 w-px bg-slate-200 mx-2" />
+               
+               <div className="flex items-center gap-3">
+                  <div className="text-right hidden md:block">
+                    <p className="text-sm font-medium text-slate-900">
+                      {partnerInfo?.organization_name || 'Loading...'}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate max-w-[150px]">
+                      {partnerInfo?.email || ''}
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 border border-emerald-200">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={onLogout}
+                    className="text-slate-400 hover:text-red-500"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+               </div>
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="-mr-2 flex items-center sm:hidden">
+              <Button
+                variant="ghost"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
               >
-                <item.icon className={`w-5 h-5 transition-colors ${activePage === item.id ? 'text-white' : 'text-slate-500 group-hover:text-white'}`} />
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          {/* User Profile / Bottom */}
-          <div className="p-4 border-t border-slate-800">
-             <div className="flex items-center gap-3 px-2 py-3 mb-2 rounded-lg bg-slate-800/50">
-                <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-slate-600">
-                  <User className="w-4 h-4 text-slate-300"/>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">Admin User</p>
-                  <p className="text-xs text-slate-500 truncate">admin@zeroro.io</p>
-                </div>
-             </div>
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center gap-2 px-2 text-xs font-medium text-slate-400 hover:text-red-400 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </button>
+                <span className="sr-only">Open main menu</span>
+                <Menu className="block h-6 w-6" aria-hidden="true" />
+              </Button>
+            </div>
           </div>
         </div>
-      </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8">
-          <div className="flex items-center gap-4">
-             <Button variant="ghost" size="sm" className="lg:hidden p-0" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-              <Menu className="w-5 h-5" />
-            </Button>
-            <div className="hidden md:flex items-center text-sm text-slate-500">
-              <span className="font-medium text-slate-900 capitalize">{activePage}</span>
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="sm:hidden border-t border-slate-200 bg-slate-50">
+            <div className="pt-2 pb-3 space-y-1">
+              {menuItems.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive(item.href)
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
+                      : 'border-transparent text-slate-600 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <item.icon className="w-5 h-5 mr-3" />
+                    {item.label}
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="pt-4 pb-4 border-t border-slate-200">
+              <div className="flex items-center px-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                    <Building2 className="w-6 h-6" />
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <div className="text-base font-medium text-slate-800">{partnerInfo?.organization_name || 'Loading...'}</div>
+                  <div className="text-sm font-medium text-slate-500">{partnerInfo?.email || ''}</div>
+                </div>
+                <button
+                  onClick={onLogout} 
+                  className="ml-auto flex-shrink-0 p-1 text-slate-400 hover:text-red-500"
+                >
+                  <LogOut className="w-6 h-6" />
+                </button>
+              </div>
             </div>
           </div>
+        )}
+      </header>
 
-          <div className="flex items-center gap-4">
-            <div className="relative hidden md:block">
-               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-               <input
-                  type="text"
-                  placeholder="Search..."
-                  className="pl-9 pr-4 h-9 w-64 rounded-full border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all"
-               />
-            </div>
-            <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
-          </div>
-        </header>
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {children}
-          </div>
-        </main>
-      </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+         {children}
+      </main>
     </div>
   );
 };
