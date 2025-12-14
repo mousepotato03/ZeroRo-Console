@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
 import {
   Plus,
   MoreHorizontal,
@@ -14,7 +15,9 @@ import {
   Leaf,
   ImagePlus,
   X,
-  ChevronRight
+  ChevronRight,
+  Eye,
+  Pencil
 } from 'lucide-react';
 import { Button, Card, CardContent, Input, Select, Badge } from '../../components/UiKit';
 import { Mission, MissionType } from '../../types';
@@ -221,6 +224,89 @@ const CampaignList: React.FC<CampaignListProps> = ({
   );
 };
 
+// --- Subcomponent: MarkdownEditor ---
+interface MarkdownEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  onGenerateAI: () => void;
+  loadingAI: boolean;
+  disabled: boolean;
+}
+
+const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange, onGenerateAI, loadingAI, disabled }) => {
+  const [tab, setTab] = useState<'edit' | 'preview'>('edit');
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <label className="text-sm font-medium text-slate-700">캠페인 설명</label>
+        <div className="flex items-center gap-2">
+          <div className="flex bg-slate-100 rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setTab('edit')}
+              className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                tab === 'edit'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Pencil className="w-3 h-3" />
+              편집
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('preview')}
+              className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                tab === 'preview'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Eye className="w-3 h-3" />
+              미리보기
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={onGenerateAI}
+            disabled={loadingAI || disabled}
+            className="text-xs flex items-center gap-1 text-purple-600 hover:text-purple-700 font-medium disabled:opacity-50 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 rounded-full transition-colors"
+          >
+            <Sparkles className="w-3 h-3" />
+            AI 자동 생성
+          </button>
+        </div>
+      </div>
+
+      {tab === 'edit' ? (
+        <textarea
+          className="w-full h-72 rounded-lg border border-slate-200 bg-white p-4 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none transition-all placeholder:text-slate-400 resize-none leading-relaxed font-mono"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={`캠페인의 목적, 참여 방법, 기대 효과 등을 상세히 설명해주세요...
+
+마크다운 문법을 지원합니다:
+# 제목
+## 소제목
+**굵은 글씨**, *기울임*
+- 목록 항목
+1. 번호 목록`}
+        />
+      ) : (
+        <div className="w-full h-72 rounded-lg border border-slate-200 bg-white p-4 text-sm overflow-auto prose prose-sm prose-slate max-w-none">
+          {value ? (
+            <ReactMarkdown>{value}</ReactMarkdown>
+          ) : (
+            <p className="text-slate-400 italic">미리볼 내용이 없습니다. 편집 탭에서 내용을 입력해주세요.</p>
+          )}
+        </div>
+      )}
+      <p className="text-xs text-slate-400">마크다운 문법을 지원합니다. (# 제목, **굵게**, *기울임*, - 목록 등)</p>
+    </div>
+  );
+};
+
 // --- Subcomponent: Builder ---
 interface CampaignBuilderProps {
   onCancel: () => void;
@@ -246,11 +332,22 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Image Upload Handler
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // 파일 업로드 처리 (공통 함수)
+  const processImageFile = async (file: File) => {
+    // 파일 타입 검증
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('JPG, PNG, WEBP 형식의 이미지만 업로드 가능합니다.');
+      return;
+    }
+
+    // 파일 크기 검증 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('파일 크기는 5MB 이하여야 합니다.');
+      return;
+    }
 
     // 미리보기 생성
     const reader = new FileReader();
@@ -283,6 +380,36 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Input 변경 핸들러
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processImageFile(file);
+  };
+
+  // 드래그앤드롭 핸들러
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    await processImageFile(file);
   };
 
   const handleRemoveImage = () => {
@@ -467,7 +594,16 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 p-8 text-center hover:bg-slate-100/50 transition-colors">
+                  <div
+                    className={`bg-slate-50 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+                      isDragging
+                        ? 'border-emerald-500 bg-emerald-50'
+                        : 'border-slate-300 hover:bg-slate-100/50'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
                     {imagePreview ? (
                       <div className="relative inline-block group">
                         <img
@@ -490,10 +626,14 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
                       </div>
                     ) : (
                       <label className="flex flex-col items-center justify-center cursor-pointer py-12">
-                        <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 text-emerald-600">
+                        <div className={`w-16 h-16 rounded-full shadow-sm flex items-center justify-center mb-4 transition-colors ${
+                          isDragging ? 'bg-emerald-100 text-emerald-600' : 'bg-white text-emerald-600'
+                        }`}>
                           <ImagePlus className="w-8 h-8" />
                         </div>
-                        <span className="text-lg font-medium text-slate-900 mb-1">이미지를 드래그하거나 클릭하여 업로드</span>
+                        <span className={`text-lg font-medium mb-1 ${isDragging ? 'text-emerald-600' : 'text-slate-900'}`}>
+                          {isDragging ? '여기에 이미지를 놓으세요' : '이미지를 드래그하거나 클릭하여 업로드'}
+                        </span>
                         <span className="text-sm text-slate-500">JPG, PNG, WEBP (최대 5MB)</span>
                         <input
                           type="file"
@@ -531,25 +671,13 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
                           className="text-lg"
                         />
                         
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <label className="text-sm font-medium text-slate-700">캠페인 설명</label>
-                            <button
-                              onClick={handleGenerateDesc}
-                              disabled={loadingAI || !title}
-                              className="text-xs flex items-center gap-1 text-purple-600 hover:text-purple-700 font-medium disabled:opacity-50 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 rounded-full transition-colors"
-                            >
-                              <Sparkles className="w-3 h-3" />
-                              AI 자동 생성
-                            </button>
-                          </div>
-                          <textarea
-                            className="w-full h-48 rounded-lg border border-slate-200 bg-white p-4 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none transition-all placeholder:text-slate-400 resize-none leading-relaxed"
-                            value={description}
-                            onChange={e => setDescription(e.target.value)}
-                            placeholder="캠페인의 목적, 참여 방법, 기대 효과 등을 상세히 설명해주세요..."
-                          />
-                        </div>
+                        <MarkdownEditor
+                          value={description}
+                          onChange={setDescription}
+                          onGenerateAI={handleGenerateDesc}
+                          loadingAI={loadingAI}
+                          disabled={!title}
+                        />
                       </div>
                     </CardContent>
                   </Card>

@@ -19,6 +19,7 @@ import {
   HelpCircle,
   Navigation
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { Button, Card, CardContent, CardHeader, CardTitle, Badge } from '../../../components/UiKit';
 import {
   BarChart,
@@ -109,6 +110,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   const [campaign, setCampaign] = useState<CampaignData | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [verifications, setVerifications] = useState<Verification[]>([]);
+  const [selectedVerification, setSelectedVerification] = useState<Verification | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingUser, setProcessingUser] = useState<string | null>(null);
@@ -170,6 +172,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         alert('거부 처리 완료');
       }
 
+      setSelectedVerification(null);
       fetchVerifications();
       fetchStats();
     } catch (err) {
@@ -291,11 +294,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-emerald-600 text-emerald-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
+              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                ? 'border-emerald-600 text-emerald-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
             >
               {tab.label}
             </button>
@@ -550,138 +552,236 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       )}
 
       {activeTab === 'verification' && (
-        <div className="space-y-4">
-          {verifications.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-                <p className="text-slate-500">검수 대상이 없습니다.</p>
-                <p className="text-sm text-slate-400 mt-1">
-                  모든 미션을 완료한 사용자가 없거나, 이미 모두 처리되었습니다.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            verifications.map(verification => (
-              <Card key={verification.userId} className={`
-                ${verification.status === 'approved' ? 'border-emerald-200 bg-emerald-50/30' : ''}
-                ${verification.status === 'rejected' ? 'border-red-200 bg-red-50/30' : ''}
-              `}>
-                <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-                    {/* 사용자 정보 */}
-                    <div className="flex items-center gap-4 lg:w-48 flex-shrink-0">
-                      {verification.userImg ? (
-                        <img
-                          src={verification.userImg}
-                          alt={verification.username || ''}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-medium">
-                          {verification.username?.charAt(0).toUpperCase() || '?'}
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {verifications.length === 0 ? (
+              <div className="col-span-full">
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <CheckCircle className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                    <p className="text-slate-500">검수 대상이 없습니다.</p>
+                    <p className="text-sm text-slate-400 mt-1">
+                      모든 미션을 완료한 사용자가 없거나, 이미 모두 처리되었습니다.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              verifications.map(verification => (
+                <div
+                  key={verification.userId}
+                  onClick={() => setSelectedVerification(verification)}
+                  className="cursor-pointer transition-all hover:-translate-y-1"
+                >
+                  <Card className={`
+                    h-full
+                    ${verification.status === 'approved' ? 'border-emerald-200 bg-emerald-50/30' : ''}
+                    ${verification.status === 'rejected' ? 'border-red-200 bg-red-50/30' : ''}
+                  `}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4 mb-4">
+                        {verification.userImg ? (
+                          <img
+                            src={verification.userImg}
+                            alt={verification.username || ''}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-medium">
+                            {verification.username?.charAt(0).toUpperCase() || '?'}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium text-slate-900">{verification.username || '알 수 없음'}</p>
+                          <p className="text-sm text-slate-500">{verification.totalPoints}P</p>
                         </div>
-                      )}
-                      <div>
-                        <p className="font-medium text-slate-900">{verification.username || '알 수 없음'}</p>
-                        <p className="text-sm text-slate-500">{verification.totalPoints}P</p>
-                        {verification.submittedAt && (
-                          <p className="text-xs text-slate-400">
-                            {new Date(verification.submittedAt).toLocaleDateString('ko-KR')}
-                          </p>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">제출일</span>
+                          <span className="text-slate-900">
+                            {verification.submittedAt ? new Date(verification.submittedAt).toLocaleDateString('ko-KR') : '-'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">미션 수</span>
+                          <span className="text-slate-900">{verification.missions.length}개</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-auto">
+                        {verification.status === 'pending' ? (
+                          <Button className="w-full" size="sm">검수하기</Button>
+                        ) : (
+                          <Badge variant={verification.status === 'approved' ? 'success' : 'error'} className="w-full justify-center py-1.5">
+                            {verification.status === 'approved' ? '승인됨' : '거부됨'}
+                          </Badge>
                         )}
                       </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Verification Modal */}
+          {selectedVerification && typeof window !== 'undefined' && createPortal(
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className="p-5 border-b flex items-center justify-between bg-white z-10">
+                  <div className="flex items-center gap-4">
+                    {selectedVerification.userImg ? (
+                      <img
+                        src={selectedVerification.userImg}
+                        alt={selectedVerification.username || ''}
+                        className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-100"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-medium text-lg">
+                        {selectedVerification.username?.charAt(0).toUpperCase() || '?'}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-bold text-xl text-slate-900">
+                        {selectedVerification.username || '알 수 없음'}
+                      </h3>
+                      <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <Badge variant="info">{selectedVerification.totalPoints}P</Badge>
+                        <span>•</span>
+                        <span>미션 {selectedVerification.missions.length}개 완료</span>
+                      </div>
                     </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedVerification(null)}
+                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    <X className="w-6 h-6 text-slate-500" />
+                  </button>
+                </div>
 
-                    {/* 미션 증거 */}
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {verification.missions.map(mission => (
-                        <div key={mission.missionId} className="bg-white rounded-lg border border-slate-200 p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            {getVerificationTypeIcon(mission.verificationType)}
-                            <span className="text-sm font-medium text-slate-700">{mission.missionTitle}</span>
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+                  <div className="max-w-3xl mx-auto space-y-8">
+                    {selectedVerification.missions.map((mission, idx) => (
+                      <div key={mission.missionId} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">
+                              {idx + 1}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {getVerificationTypeIcon(mission.verificationType)}
+                              <span className="font-bold text-slate-800">{mission.missionTitle}</span>
+                            </div>
                           </div>
+                          <span className="text-sm font-bold text-emerald-600">+{mission.rewardPoints}P</span>
+                        </div>
 
-                          {/* 증거 데이터 표시 */}
+                        <div className="p-6">
                           {mission.proofData ? (
-                            <div className="mt-2">
+                            <div className="space-y-4">
                               {mission.verificationType === 'IMAGE' && mission.proofData.imageUrl && (
-                                <img
-                                  src={mission.proofData.imageUrl}
-                                  alt="인증 이미지"
-                                  className="w-full h-32 object-cover rounded cursor-pointer hover:opacity-90"
-                                  onClick={() => window.open(mission.proofData.imageUrl, '_blank')}
-                                />
+                                <div className="space-y-3">
+                                  <div className="rounded-lg overflow-hidden border border-slate-200 bg-slate-100 relative group">
+                                    <img
+                                      src={mission.proofData.imageUrl}
+                                      alt="인증 이미지"
+                                      className="w-full max-h-[600px] object-contain mx-auto"
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                  </div>
+                                  <div className="flex justify-end">
+                                    <a
+                                      href={mission.proofData.imageUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline flex items-center gap-1"
+                                    >
+                                      새 탭에서 원본 이미지 보기
+                                    </a>
+                                  </div>
+                                </div>
                               )}
+
                               {mission.verificationType === 'TEXT_REVIEW' && mission.proofData.text && (
-                                <p className="text-sm text-slate-600 line-clamp-3">{mission.proofData.text}</p>
+                                <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+                                  <p className="text-slate-800 whitespace-pre-wrap leading-relaxed text-base font-medium break-keep">
+                                    {mission.proofData.text}
+                                  </p>
+                                </div>
                               )}
+
                               {mission.verificationType === 'QUIZ' && mission.proofData.answer && (
-                                <p className="text-sm text-slate-600">답변: {mission.proofData.answer}</p>
+                                <div className="bg-blue-50 p-6 rounded-lg border border-blue-100">
+                                  <p className="text-sm text-blue-800 font-medium mb-2 opacity-80">사용자 답변</p>
+                                  <p className="text-xl text-blue-900 font-bold">{mission.proofData.answer}</p>
+                                </div>
                               )}
+
                               {mission.verificationType === 'LOCATION' && (
-                                <p className="text-sm text-slate-600">
-                                  위치 인증 완료
-                                  {mission.proofData.address && ` (${mission.proofData.address})`}
-                                </p>
+                                <div className="bg-slate-50 p-5 rounded-lg border border-slate-200 flex items-start gap-4">
+                                  <div className="p-3 bg-red-100 text-red-600 rounded-full">
+                                    <MapPin className="w-6 h-6" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-slate-900 text-lg mb-1">위치 인증 완료</p>
+                                    {mission.proofData.address ? (
+                                      <p className="text-slate-600">{mission.proofData.address}</p>
+                                    ) : (
+                                      <p className="text-slate-400 text-sm">상세 주소 정보 없음</p>
+                                    )}
+                                  </div>
+                                </div>
                               )}
                             </div>
                           ) : (
-                            <p className="text-sm text-slate-400 mt-2">증거 데이터 없음</p>
+                            <div className="py-12 text-center bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                              <p className="text-slate-400">제출된 증거 데이터가 없습니다.</p>
+                            </div>
                           )}
                         </div>
-                      ))}
-                    </div>
-
-                    {/* 액션 버튼 */}
-                    <div className="flex lg:flex-col gap-2 lg:w-32 flex-shrink-0">
-                      {verification.status === 'pending' ? (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => handleVerification(verification.userId, 'approve')}
-                            disabled={!!processingUser}
-                            isLoading={processingUser === verification.userId}
-                            className="flex-1 lg:flex-none"
-                          >
-                            <Check className="w-4 h-4 mr-1" />
-                            승인
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleVerification(verification.userId, 'reject')}
-                            disabled={!!processingUser}
-                            className="flex-1 lg:flex-none text-red-600 border-red-200 hover:bg-red-50"
-                          >
-                            <X className="w-4 h-4 mr-1" />
-                            거부
-                          </Button>
-                        </>
-                      ) : (
-                        <Badge
-                          variant={verification.status === 'approved' ? 'success' : 'error'}
-                        >
-                          {verification.status === 'approved' ? (
-                            <>
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              승인됨
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="w-3 h-3 mr-1" />
-                              거부됨
-                            </>
-                          )}
-                        </Badge>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-            ))
+                </div>
+
+                {/* Footer */}
+                <div className="p-5 border-t bg-white flex justify-end gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+                  <Button variant="outline" onClick={() => setSelectedVerification(null)} className="px-6">
+                    닫기
+                  </Button>
+                  {selectedVerification.status === 'pending' && (
+                    <>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleVerification(selectedVerification.userId, 'reject')}
+                        disabled={!!processingUser}
+                        className="bg-red-600 hover:bg-red-700 text-white px-6"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        거부
+                      </Button>
+                      <Button
+                        onClick={() => handleVerification(selectedVerification.userId, 'approve')}
+                        disabled={!!processingUser}
+                        isLoading={processingUser === selectedVerification.userId}
+                        className="bg-emerald-600 hover:bg-emerald-700 px-8 text-base"
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        승인
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body
           )}
-        </div>
+        </>
       )}
     </div>
   );

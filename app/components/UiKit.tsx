@@ -99,7 +99,7 @@ export const Select: React.FC<SelectProps> = ({ label, options, className = '', 
 );
 
 // --- Badge ---
-export const Badge: React.FC<{ children: React.ReactNode; variant?: 'success' | 'warning' | 'default' | 'info' | 'error' }> = ({ children, variant = 'default' }) => {
+export const Badge: React.FC<{ children: React.ReactNode; variant?: 'success' | 'warning' | 'default' | 'info' | 'error'; className?: string }> = ({ children, variant = 'default', className = '' }) => {
   const styles = {
     success: "bg-emerald-50 text-emerald-700 border-emerald-200",
     warning: "bg-amber-50 text-amber-700 border-amber-200",
@@ -108,7 +108,7 @@ export const Badge: React.FC<{ children: React.ReactNode; variant?: 'success' | 
     error: "bg-red-50 text-red-700 border-red-200",
   };
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${styles[variant]}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${styles[variant]} ${className}`}>
       {children}
     </span>
   );
