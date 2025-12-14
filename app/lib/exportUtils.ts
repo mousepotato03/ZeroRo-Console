@@ -1,6 +1,60 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// ArrayBuffer를 Base64로 변환하는 헬퍼 함수
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// 한글 폰트 로드 및 등록 함수
+// NotoSansKR-Regular.ttf 파일을 public/fonts/ 폴더에 추가해야 합니다.
+// 다운로드: https://fonts.google.com/noto/specimen/Noto+Sans+KR
+// 반환값: 폰트 로드 성공 여부 (true: 성공, false: 실패)
+async function loadKoreanFont(doc: jsPDF): Promise<boolean> {
+  try {
+    // 폰트 파일을 fetch로 가져오기
+    const fontResponse = await fetch('/fonts/NotoSansKR-Regular.ttf');
+    
+    // 404/403 등 에러 체크 (가장 중요!)
+    if (!fontResponse.ok) {
+      console.error(
+        `한글 폰트 파일 로드 실패: ${fontResponse.status} ${fontResponse.statusText}\n` +
+        `폰트 파일이 /fonts/NotoSansKR-Regular.ttf 경로에 존재하는지 확인하세요.\n` +
+        `브라우저에서 http://localhost:3000/fonts/NotoSansKR-Regular.ttf 접속 시 200 OK가 나와야 합니다.`
+      );
+      return false;
+    }
+    
+    const fontArrayBuffer = await fontResponse.arrayBuffer();
+    
+    // 빈 파일 체크
+    if (fontArrayBuffer.byteLength === 0) {
+      console.error('한글 폰트 파일이 비어있습니다.');
+      return false;
+    }
+    
+    const fontBase64 = arrayBufferToBase64(fontArrayBuffer);
+    
+    // VFS에 폰트 파일 추가 (임베딩을 위해 필수)
+    doc.addFileToVFS('NotoSansKR-Regular.ttf', fontBase64);
+    
+    // 폰트 등록
+    doc.addFont('NotoSansKR-Regular.ttf', 'NotoSansKR', 'normal');
+    
+    console.log('한글 폰트 로드 및 등록 완료');
+    return true;
+  } catch (error) {
+    console.error('한글 폰트 로드 중 오류 발생:', error);
+    return false;
+  }
+}
+
 interface DashboardOverview {
   totalParticipants: number;
   completedMissions: number;
@@ -73,39 +127,71 @@ export const exportToCSV = (data: DashboardOverview) => {
 };
 
 // PDF Export
-export const exportToPDF = (data: DashboardOverview) => {
+export const exportToPDF = async (data: DashboardOverview) => {
   const timestamp = new Date().toISOString().split('T')[0];
   const doc = new jsPDF();
 
-  // Title
+  // 1) 폰트 파일이 실제로 로드되어야 함 (가장 중요)
+  // 2) 텍스트 찍기 전에 폰트 등록이 끝나야 함 (await 필수)
+  const fontLoaded = await loadKoreanFont(doc);
+  
+  // 폰트가 로드되었는지 확인 후 설정
+  let fontName = 'helvetica'; // 기본 폰트
+  if (fontLoaded) {
+    try {
+      doc.setFont('NotoSansKR', 'normal');
+      fontName = 'NotoSansKR';
+    } catch (e) {
+      console.warn('한글 폰트 설정 실패:', e);
+    }
+  } else {
+    console.warn('⚠️ 한글 폰트가 로드되지 않았습니다. PDF에서 한글이 깨질 수 있습니다.');
+  }
+
+  // Title (폰트 설정 후 텍스트 출력)
+  doc.setFont(fontName, 'normal');
   doc.setFontSize(20);
-  doc.text('Dashboard Report', 105, 20, { align: 'center' });
+  doc.text('대시보드 리포트', 105, 20, { align: 'center' });
   doc.setFontSize(10);
-  doc.text(`Generated: ${new Date().toLocaleString('ko-KR')}`, 105, 28, { align: 'center' });
+  doc.text(`생성일: ${new Date().toLocaleString('ko-KR')}`, 105, 28, { align: 'center' });
 
   let yPos = 40;
 
   // Main KPIs
+  doc.setFont(fontName, 'normal');
   doc.setFontSize(14);
-  doc.text('Main Indicators', 20, yPos);
+  doc.text('주요 지표', 20, yPos);
   yPos += 10;
 
   const kpiData = [
-    ['Total Participants', data.totalParticipants.toLocaleString()],
-    ['Completed Missions', data.completedMissions.toLocaleString()],
-    ['Mission Completion Rate', `${data.missionCompletionRate}%`],
-    ['CO2 Reduction', `${data.co2Reduction}kg`],
-    ['Monthly Growth', `${data.monthlyGrowth}%`],
-    ['Weekly New Participants', data.weeklyNewParticipants.toString()],
-    ['Campaign Completion Rate', `${data.campaignCompletionRate}%`]
+    ['총 참여자', data.totalParticipants.toLocaleString()],
+    ['완료된 미션', data.completedMissions.toLocaleString()],
+    ['미션 완료율', `${data.missionCompletionRate}%`],
+    ['CO2 절감량', `${data.co2Reduction}kg`],
+    ['월간 성장률', `${data.monthlyGrowth}%`],
+    ['이번 주 신규 참여자', data.weeklyNewParticipants.toString()],
+    ['캠페인 완료율', `${data.campaignCompletionRate}%`]
   ];
 
+  // 3) autoTable에도 폰트를 지정해야 함 (styles, headStyles, bodyStyles 모두)
   autoTable(doc, {
     startY: yPos,
-    head: [['Metric', 'Value']],
+    head: [['항목', '값']],
     body: kpiData,
     theme: 'grid',
-    headStyles: { fillColor: [16, 185, 129] },
+    headStyles: { 
+      fillColor: [16, 185, 129],
+      font: fontName,
+      fontStyle: 'normal'
+    },
+    bodyStyles: {
+      font: fontName,
+      fontStyle: 'normal'
+    },
+    styles: {
+      font: fontName,
+      fontStyle: 'normal'
+    },
     margin: { left: 20, right: 20 }
   });
 
@@ -113,23 +199,36 @@ export const exportToPDF = (data: DashboardOverview) => {
 
   // Top Campaign
   if (data.topCampaign) {
+    doc.setFont(fontName, 'normal');
     doc.setFontSize(14);
-    doc.text('Top Campaign', 20, yPos);
+    doc.text('최고 성과 캠페인', 20, yPos);
     yPos += 10;
 
     const campaignData = [
-      ['Title', data.topCampaign.title],
-      ['Participants', data.topCampaign.participants.toString()],
-      ['Completed', data.topCampaign.completed.toString()],
-      ['Completion Rate', `${data.topCampaign.completionRate}%`]
+      ['제목', data.topCampaign.title],
+      ['참여자 수', data.topCampaign.participants.toString()],
+      ['완료된 미션', data.topCampaign.completed.toString()],
+      ['완료율', `${data.topCampaign.completionRate}%`]
     ];
 
     autoTable(doc, {
       startY: yPos,
-      head: [['Property', 'Value']],
+      head: [['속성', '값']],
       body: campaignData,
       theme: 'grid',
-      headStyles: { fillColor: [245, 158, 11] },
+      headStyles: { 
+        fillColor: [245, 158, 11],
+        font: fontName,
+        fontStyle: 'normal'
+      },
+      bodyStyles: {
+        font: fontName,
+        fontStyle: 'normal'
+      },
+      styles: {
+        font: fontName,
+        fontStyle: 'normal'
+      },
       margin: { left: 20, right: 20 }
     });
 
@@ -142,8 +241,9 @@ export const exportToPDF = (data: DashboardOverview) => {
     yPos = 20;
   }
 
+  doc.setFont(fontName, 'normal');
   doc.setFontSize(14);
-  doc.text('Category Distribution', 20, yPos);
+  doc.text('카테고리별 참여자 분포', 20, yPos);
   yPos += 10;
 
   const categoryData = data.categoryDistribution.map(item => [
@@ -153,23 +253,34 @@ export const exportToPDF = (data: DashboardOverview) => {
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Category', 'Participants']],
+    head: [['카테고리', '참여자 수']],
     body: categoryData,
     theme: 'grid',
-    headStyles: { fillColor: [139, 92, 246] },
+    headStyles: { 
+      fillColor: [139, 92, 246],
+      font: fontName,
+      fontStyle: 'normal'
+    },
+    bodyStyles: {
+      font: fontName,
+      fontStyle: 'normal'
+    },
+    styles: {
+      font: fontName,
+      fontStyle: 'normal'
+    },
     margin: { left: 20, right: 20 }
   });
 
   yPos = (doc as any).lastAutoTable.finalY + 15;
 
-  // Weekly Trend
-  if (yPos > 250) {
-    doc.addPage();
-    yPos = 20;
-  }
+  // Weekly Trend - 항상 다음 페이지에서 시작
+  doc.addPage();
+  yPos = 20;
 
+  doc.setFont(fontName, 'normal');
   doc.setFontSize(14);
-  doc.text('Weekly Trend', 20, yPos);
+  doc.text('주간 참여자 추이', 20, yPos);
   yPos += 10;
 
   const trendData = data.weeklyTrend.map(item => [
@@ -179,10 +290,22 @@ export const exportToPDF = (data: DashboardOverview) => {
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Date', 'Participants']],
+    head: [['날짜', '참여자 수']],
     body: trendData,
     theme: 'grid',
-    headStyles: { fillColor: [16, 185, 129] },
+    headStyles: { 
+      fillColor: [16, 185, 129],
+      font: fontName,
+      fontStyle: 'normal'
+    },
+    bodyStyles: {
+      font: fontName,
+      fontStyle: 'normal'
+    },
+    styles: {
+      font: fontName,
+      fontStyle: 'normal'
+    },
     margin: { left: 20, right: 20 }
   });
 

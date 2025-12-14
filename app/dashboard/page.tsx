@@ -149,7 +149,7 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleExport = (format: 'csv' | 'pdf' | 'hwp') => {
+  const handleExport = async (format: 'csv' | 'pdf' | 'hwp') => {
     if (!overview) return;
 
     switch (format) {
@@ -157,7 +157,7 @@ export default function DashboardPage() {
         exportToCSV(overview);
         break;
       case 'pdf':
-        exportToPDF(overview);
+        await exportToPDF(overview);
         break;
       case 'hwp':
         exportToHWP(overview);
