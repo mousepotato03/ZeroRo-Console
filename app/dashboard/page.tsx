@@ -784,24 +784,70 @@ export default function DashboardPage() {
 
                 {/* Insights */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      <h4 className="font-semibold text-emerald-900">우수한 성과</h4>
-                    </div>
-                    <p className="text-sm text-emerald-700">
-                      평균 이상의 완료율로 참여자들의 적극적인 참여를 보여줍니다.
-                    </p>
-                  </div>
-                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Target className="w-5 h-5 text-blue-600" />
-                      <h4 className="font-semibold text-blue-900">개선 기회</h4>
-                    </div>
-                    <p className="text-sm text-blue-700">
-                      미완료 미션에 대한 리마인더를 통해 완료율을 더 높일 수 있습니다.
-                    </p>
-                  </div>
+                  {overview.campaignCompletionRate >= 70 ? (
+                    <>
+                      <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <h4 className="font-semibold text-emerald-900">우수한 성과</h4>
+                        </div>
+                        <p className="text-sm text-emerald-700">
+                          평균 이상의 완료율로 참여자들의 적극적인 참여를 보여줍니다.
+                        </p>
+                      </div>
+                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="w-5 h-5 text-blue-600" />
+                          <h4 className="font-semibold text-blue-900">지속적인 개선</h4>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          현재의 높은 완료율을 유지하며 더 많은 참여자를 유치할 수 있습니다.
+                        </p>
+                      </div>
+                    </>
+                  ) : overview.campaignCompletionRate >= 40 ? (
+                    <>
+                      <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle2 className="w-5 h-5 text-yellow-600" />
+                          <h4 className="font-semibold text-yellow-900">양호한 성과</h4>
+                        </div>
+                        <p className="text-sm text-yellow-700">
+                          적정 수준의 완료율을 유지하고 있습니다.
+                        </p>
+                      </div>
+                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="w-5 h-5 text-blue-600" />
+                          <h4 className="font-semibold text-blue-900">개선 기회</h4>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          미완료 미션에 대한 리마인더를 통해 완료율을 더 높일 수 있습니다.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="w-5 h-5 text-red-600" />
+                          <h4 className="font-semibold text-red-900">개선 필요</h4>
+                        </div>
+                        <p className="text-sm text-red-700">
+                          현재 완료율이 낮은 상태입니다. 참여자들의 동기부여가 필요합니다.
+                        </p>
+                      </div>
+                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="w-5 h-5 text-blue-600" />
+                          <h4 className="font-semibold text-blue-900">개선 방안</h4>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          리마인더 발송, 보상 제공, 미션 난이도 조정 등을 통해 완료율을 개선할 수 있습니다.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
