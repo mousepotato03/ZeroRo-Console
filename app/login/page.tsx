@@ -66,7 +66,8 @@ function LoginForm() {
         <div className="relative z-10">
           <Logo variant="light" className="mb-8" onClick={handleBack} />
           <h2 className="text-4xl font-bold tracking-tight max-w-lg leading-tight">
-            Manage your environmental impact with AI-powered verification.
+            AI 기반 검증으로<br/>
+            환경 영향을 관리하세요.
           </h2>
         </div>
         <div className="relative z-10 text-slate-400 text-sm">
@@ -78,8 +79,8 @@ function LoginForm() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-sm space-y-8">
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome back</h1>
-            <p className="text-slate-500 text-sm">Enter the credentials provided by your Zeroro manager.</p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">다시 오신 것을 환영합니다</h1>
+            <p className="text-slate-500 text-sm">Zeroro 관리자가 제공한 계정 정보를 입력하세요.</p>
           </div>
 
           {successMessage && (
@@ -90,7 +91,7 @@ function LoginForm() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
-              label="Work Email"
+              label="업무용 이메일"
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
@@ -98,7 +99,7 @@ function LoginForm() {
               placeholder="name@organization.com"
             />
             <Input
-              label="Password"
+              label="비밀번호"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -112,7 +113,7 @@ function LoginForm() {
             )}
 
             <Button type="submit" className="w-full h-11 text-base shadow-lg shadow-emerald-500/20" isLoading={loading}>
-              Sign In to Console
+              콘솔 로그인
             </Button>
 
             <div className="text-center">
@@ -124,7 +125,7 @@ function LoginForm() {
 
           <div className="text-center pt-4">
             <button onClick={handleBack} className="text-sm text-slate-500 hover:text-emerald-600 font-medium">
-              &larr; Back to Landing Page
+              &larr; 메인 페이지로 돌아가기
             </button>
           </div>
         </div>
@@ -135,7 +136,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center">로딩 중...</div>}>
       <LoginForm />
     </Suspense>
   );

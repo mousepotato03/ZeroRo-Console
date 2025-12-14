@@ -133,7 +133,7 @@ export default function LandingPage() {
                   : 'bg-gradient-to-b from-white/90 via-white/60 to-white/30 border border-white/60 text-slate-900'
                   }`}
               >
-                Log in
+                로그인
               </Button>
             </Link>
           </div>
@@ -172,7 +172,7 @@ export default function LandingPage() {
               onClick={() => setIsApplying(true)}
               className="px-10 h-16 text-xl rounded-full bg-gradient-to-b from-white/90 via-white/60 to-white/30 border border-white/60 text-slate-900 font-bold backdrop-blur-xl shadow-[0_8px_32px_0_rgba(255,255,255,0.1)] transition-all hover:scale-105"
             >
-              Start Partnership <ArrowRight className="ml-2 w-6 h-6 text-slate-900" />
+              파트너십 시작하기 <ArrowRight className="ml-2 w-6 h-6 text-slate-900" />
             </Button>
           </div>
         </div>
@@ -186,17 +186,17 @@ export default function LandingPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            Now featuring Gemini 2.5 Vision API
+            Gemini 2.5 Vision API 탑재
           </div>
 
           <h2 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 leading-[1.1]">
-            Gamify your <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">Environmental Impact</span>
+            환경 활동을 <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">게임처럼</span>
           </h2>
 
           <p className="text-xl md:text-2xl text-slate-600 font-medium leading-relaxed max-w-2xl mx-auto">
-            The all-in-one console for governments and NGOs. <br />
-            Launch campaigns, track real-time ESG data, and verify missions with AI.
+            정부 및 NGO를 위한 올인원 콘솔. <br />
+            캠페인 런칭, 실시간 ESG 데이터 추적, AI 미션 검증까지.
           </p>
         </div>
       </section>
@@ -210,22 +210,22 @@ export default function LandingPage() {
               <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 text-emerald-600 font-bold tracking-wider text-sm uppercase">
                   <Zap className="w-4 h-4" />
-                  Core Technology
+                  핵심 기술
                 </div>
                 <h3 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
-                  Meet Your <br/>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">AI Eco-Assistant.</span>
+                  만나보세요, <br/>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">AI 에코 어시스턴트.</span>
                 </h3>
                 <p className="text-lg text-slate-600 leading-relaxed">
-                  Powered by advanced Gemini models, our AI agent works 24/7 to streamline your operations.
-                  From instant mission verification to predictive analytics, get the insights you need to drive real change.
+                  최첨단 Gemini 모델 기반의 AI 에이전트가 24시간 운영을 지원합니다.
+                  즉각적인 미션 검증부터 예측 분석까지, 실질적인 변화를 이끌어낼 인사이트를 제공합니다.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {[
-                  { icon: ShieldCheck, title: "Auto-Verification", desc: "Instantly validate user submissions with computer vision." },
-                  { icon: Activity, title: "Data Insights", desc: "Turn raw metrics into actionable environmental strategies." }
+                  { icon: ShieldCheck, title: "자동 검증", desc: "컴퓨터 비전으로 사용자 제출물을 즉시 검증합니다." },
+                  { icon: Activity, title: "데이터 인사이트", desc: "원시 데이터를 실행 가능한 환경 전략으로 전환합니다." }
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4 items-start">
                     <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
@@ -256,7 +256,7 @@ export default function LandingPage() {
                     <div className="absolute top-4 right-4 z-20">
                       <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 border border-emerald-100">
                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                         AI Analysis Complete
+                         AI 분석 완료
                       </div>
                     </div>
                  </div>
@@ -287,10 +287,10 @@ export default function LandingPage() {
                     <div className="absolute bottom-4 left-4 right-4 z-20 flex gap-2">
                       <div className="bg-white/90 backdrop-blur-md px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2">
                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                         Live Tracking
+                         실시간 추적
                       </div>
                       <div className="bg-emerald-500/90 backdrop-blur-md px-3 py-2 rounded-lg text-xs font-bold text-white shadow-sm ml-auto">
-                         + 150 Points
+                         + 150 포인트
                       </div>
                     </div>
                  </div>
@@ -302,23 +302,23 @@ export default function LandingPage() {
               <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 text-emerald-600 font-bold tracking-wider text-sm uppercase">
                   <Map className="w-4 h-4" />
-                  App Feature
+                  앱 기능
                 </div>
                 <h3 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
-                  Explore the World, <br/>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">One Step at a Time.</span>
+                  세상을 탐험하세요, <br/>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">한 걸음씩.</span>
                 </h3>
                 <p className="text-lg text-slate-600 leading-relaxed">
-                  Connect with the <strong>ZeroRo App</strong> to discover local plogging hotspots. 
-                  Our interactive map guides you to areas that need attention, tracks your cleaning path in real-time, 
-                  and rewards your contribution with eco-points.
+                  <strong>ZeroRo 앱</strong>과 연결하여 주변 플로깅 핫스팟을 찾아보세요.
+                  인터랙티브 지도가 관심이 필요한 지역으로 안내하고, 실시간으로 청소 경로를 추적하며,
+                  에코 포인트로 기여에 보상합니다.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {[
-                  { icon: Navigation, title: "Smart Routing", desc: "Optimized paths for maximum cleanup efficiency." },
-                  { icon: Activity, title: "Live Heatmaps", desc: "See community impact visualization in real-time." }
+                  { icon: Navigation, title: "스마트 경로", desc: "최대 청소 효율을 위한 최적화된 경로." },
+                  { icon: Activity, title: "실시간 히트맵", desc: "커뮤니티 영향을 실시간으로 시각화합니다." }
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4 items-start">
                     <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
@@ -345,9 +345,9 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { icon: Zap, title: "Campaign Builder", desc: "Drag-and-drop mission creation tool designed for non-technical managers." },
-              { icon: ShieldCheck, title: "AI Verification", desc: "Google Gemini Vision API automatically validates photo submissions to prevent fraud." },
-              { icon: Activity, title: "Real-time Analytics", desc: "Live dashboards for participation rates, carbon reduction, and regional heatmaps." }
+              { icon: Zap, title: "캠페인 빌더", desc: "비기술 관리자를 위해 설계된 드래그 앤 드롭 미션 생성 도구." },
+              { icon: ShieldCheck, title: "AI 검증", desc: "Google Gemini Vision API가 사진 제출물을 자동으로 검증하여 부정행위를 방지합니다." },
+              { icon: Activity, title: "실시간 분석", desc: "참여율, 탄소 감소량, 지역 히트맵을 위한 라이브 대시보드." }
             ].map((f, i) => (
               <GlassCard key={i} className="p-8 hover:bg-white/40 transition-all duration-300 group hover:-translate-y-2">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center text-slate-900 mb-6 bg-white/50 border border-white/60 shadow-sm group-hover:bg-emerald-500/10 group-hover:text-emerald-700 transition-colors">

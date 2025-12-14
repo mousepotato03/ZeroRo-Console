@@ -131,7 +131,7 @@ const CampaignList: React.FC<CampaignListProps> = ({
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Campaigns</h1>
           <p className="text-slate-500 mt-1">내 캠페인을 관리하고 추적합니다.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
           <Button variant="outline" onClick={onRefresh} disabled={isLoading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             새로고침
