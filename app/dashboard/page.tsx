@@ -65,19 +65,22 @@ interface DashboardOverview {
 
 const COLORS = ['#10b981', '#14b8a6', '#22c55e', '#059669', '#0d9488', '#0f766e'];
 
-const KPICard = ({ title, value, icon: Icon, trend, trendUp, onClick, clickable, color = 'blue' }: any) => {
+const KPICard = ({ title, value, icon: Icon, trend, trendUp, onClick, clickable, color = 'blue', iconColor }: any) => {
   const colorSchemes = {
-    blue: { bg: 'from-blue-500 to-blue-600', text: 'text-blue-50', icon: 'text-white' },
-    teal: { bg: 'from-teal-500 to-cyan-600', text: 'text-teal-50', icon: 'text-white' },
-    orange: { bg: 'from-orange-500 to-red-500', text: 'text-orange-50', icon: 'text-white' },
-    purple: { bg: 'from-purple-500 to-pink-600', text: 'text-purple-50', icon: 'text-white' }
+    blue: { bg: 'from-blue-500 to-blue-600', text: 'text-blue-50', icon: 'text-white', border: false },
+    teal: { bg: 'from-teal-500 to-cyan-600', text: 'text-teal-50', icon: 'text-white', border: false },
+    orange: { bg: 'from-orange-500 to-red-500', text: 'text-orange-50', icon: 'text-white', border: false },
+    purple: { bg: 'from-purple-500 to-pink-600', text: 'text-purple-50', icon: 'text-white', border: false },
+    emerald: { bg: 'from-green-700 to-green-800', text: 'text-green-50', icon: 'text-white', border: false },
+    slate: { bg: 'slate-700/50', text: 'text-slate-200', icon: 'text-purple-400', border: true }
   };
 
   const scheme = colorSchemes[color as keyof typeof colorSchemes] || colorSchemes.blue;
+  const finalIconColor = iconColor || scheme.icon;
 
   return (
     <div
-      className={`relative overflow-hidden rounded-lg bg-gradient-to-br ${scheme.bg} p-5 shadow-xl transition-all duration-300 ${
+      className={`relative overflow-hidden rounded-lg ${scheme.border ? `bg-${scheme.bg} backdrop-blur border border-slate-600` : `bg-gradient-to-br ${scheme.bg}`} p-5 shadow-xl transition-all duration-300 ${
         clickable ? 'cursor-pointer hover:scale-105 hover:shadow-2xl group' : 'hover:scale-102'
       }`}
       onClick={onClick}
@@ -89,7 +92,7 @@ const KPICard = ({ title, value, icon: Icon, trend, trendUp, onClick, clickable,
       )}
 
       <div className="flex items-start justify-between mb-3">
-        <Icon className={`w-7 h-7 ${scheme.icon} opacity-90`} />
+        <Icon className={`w-7 h-7 ${finalIconColor} opacity-90`} />
         {trend !== undefined && trend !== null && (
           <div className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-md bg-white/20 backdrop-blur text-white">
             {trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
@@ -99,7 +102,7 @@ const KPICard = ({ title, value, icon: Icon, trend, trendUp, onClick, clickable,
       </div>
 
       <div>
-        <p className={`text-xs font-medium ${scheme.text} opacity-80 mb-1`}>{title}</p>
+        <p className={`text-sm font-bold ${scheme.text} mb-1`}>{title}</p>
         <h3 className="text-3xl font-bold text-white tracking-tight">{value}</h3>
       </div>
     </div>
@@ -296,7 +299,7 @@ export default function DashboardPage() {
           icon={Users}
           trend={overview.monthlyGrowth !== 0 ? `${overview.monthlyGrowth > 0 ? '+' : ''}${overview.monthlyGrowth}%` : null}
           trendUp={overview.monthlyGrowth >= 0}
-          color="blue"
+          color="emerald"
         />
         <KPICard
           title="이번 주 신규"
@@ -304,7 +307,7 @@ export default function DashboardPage() {
           icon={Activity}
           trend={null}
           trendUp={true}
-          color="teal"
+          color="emerald"
         />
         <KPICard
           title="미션 완료율"
@@ -312,7 +315,7 @@ export default function DashboardPage() {
           icon={TrendingUp}
           trend={null}
           trendUp={overview.missionCompletionRate >= 50}
-          color="orange"
+          color="emerald"
         />
         <KPICard
           title="CO2 절감량"
@@ -320,7 +323,7 @@ export default function DashboardPage() {
           icon={Leaf}
           trend={null}
           trendUp={true}
-          color="purple"
+          color="emerald"
         />
       </div>
 
@@ -334,7 +337,8 @@ export default function DashboardPage() {
           trendUp={true}
           clickable={true}
           onClick={handleMissionCardClick}
-          color="teal"
+          color="slate"
+          iconColor="text-emerald-400"
         />
         <div
           className="relative overflow-hidden rounded-lg bg-slate-700/50 backdrop-blur border border-slate-600 p-5 cursor-pointer group transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:border-orange-400"
@@ -346,7 +350,7 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between mb-3">
             <Award className="w-7 h-7 text-orange-400" />
           </div>
-          <p className="text-xs font-medium text-slate-400 mb-1">최고 성과 캠페인</p>
+          <p className="text-sm font-bold text-slate-200 mb-1">최고 성과 캠페인</p>
           <h3 className="text-2xl font-bold text-white mb-2">
             {overview.topCampaign?.title || 'N/A'}
           </h3>
@@ -367,7 +371,7 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between mb-3">
             <TrendingUp className="w-7 h-7 text-blue-400" />
           </div>
-          <p className="text-xs font-medium text-slate-400 mb-1">캠페인 완료율</p>
+          <p className="text-sm font-bold text-slate-200 mb-1">캠페인 완료율</p>
           <h3 className="text-3xl font-bold text-white mb-2">
             {overview.campaignCompletionRate}%
           </h3>
@@ -383,7 +387,7 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between mb-3">
             <Trophy className="w-7 h-7 text-purple-400" />
           </div>
-          <p className="text-xs font-medium text-slate-400 mb-1">인기 카테고리</p>
+          <p className="text-sm font-bold text-slate-200 mb-1">인기 카테고리</p>
           <h3 className="text-3xl font-bold text-white">
             {overview.topCategory || 'N/A'}
           </h3>
@@ -393,7 +397,7 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between mb-3">
             <MapPin className="w-7 h-7 text-teal-400" />
           </div>
-          <p className="text-xs font-medium text-slate-400 mb-1">최다 활동 지역</p>
+          <p className="text-sm font-bold text-slate-200 mb-1">최다 활동 지역</p>
           <h3 className="text-3xl font-bold text-white">
             {overview.topRegion || 'N/A'}
           </h3>
