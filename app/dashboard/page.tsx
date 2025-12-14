@@ -200,7 +200,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-slate-500">Loading...</div>
+        <div className="text-slate-500">로딩 중...</div>
       </div>
     );
   }
@@ -219,20 +219,23 @@ export default function DashboardPage() {
     participants: item.participants
   }));
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 p-6 space-y-6 rounded-lg">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">
-            Environmental Impact Dashboard
+            환경 영향 대시보드
           </h1>
           <p className="text-slate-300 mt-1 text-sm">실시간 환경 캠페인 성과 분석 센터</p>
         </div>
         <div className="flex gap-3">
-           <select className="h-10 rounded-lg border border-slate-600 bg-slate-700/50 backdrop-blur px-4 text-sm font-medium text-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all cursor-pointer">
-             <option className="bg-slate-800">Last 7 Days</option>
-             <option className="bg-slate-800">Last 30 Days</option>
-             <option className="bg-slate-800">This Year</option>
-           </select>
+           <div className="relative">
+             <select className="h-10 rounded-lg border border-slate-600 bg-slate-700/50 backdrop-blur pl-4 pr-10 text-sm font-medium text-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all cursor-pointer appearance-none">
+               <option className="bg-slate-800">최근 7일</option>
+               <option className="bg-slate-800">최근 30일</option>
+               <option className="bg-slate-800">올해</option>
+             </select>
+             <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
+           </div>
 
            {/* Export Dropdown */}
            <div className="relative" ref={exportDropdownRef}>
@@ -241,7 +244,7 @@ export default function DashboardPage() {
                className="h-10 px-5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-bold hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg hover:shadow-emerald-500/50 flex items-center gap-2"
              >
                <Download className="w-4 h-4" />
-               Export
+               내보내기
                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showExportDropdown ? 'rotate-180' : ''}`} />
              </button>
 
