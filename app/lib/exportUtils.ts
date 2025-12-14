@@ -1,5 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel } from 'docx';
+import { saveAs } from 'file-saver';
 
 // ArrayBuffer를 Base64로 변환하는 헬퍼 함수
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -347,66 +349,325 @@ export const exportToPDF = async (data: DashboardOverview) => {
   doc.save(`dashboard_report_${timestamp}.pdf`);
 };
 
-// HWP Export (RTF format that HWP can open)
-export const exportToHWP = (data: DashboardOverview) => {
+// DOCX Export (PDF와 동일한 내용)
+export const exportToDOCX = async (data: DashboardOverview) => {
   const timestamp = new Date().toISOString().split('T')[0];
+  
+  // 제목
+  const title = new Paragraph({
+    text: '환경 영향 보고서',
+    heading: HeadingLevel.TITLE,
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 200 },
+  });
 
-  // Create RTF content (compatible with HWP)
-  let rtf = '{\\rtf1\\ansi\\deff0\n';
-  rtf += '{\\fonttbl{\\f0\\fnil\\fcharset129 Malgun Gothic;}}\n';
-  rtf += '{\\colortbl;\\red16\\green185\\blue129;\\red0\\green0\\blue0;}\n';
-  rtf += '\\viewkind4\\uc1\\pard\\sa200\\sl276\\slmult1\\lang1042\\f0\\fs28\n\n';
+  const dateParagraph = new Paragraph({
+    text: `생성일: ${new Date().toLocaleString('ko-KR')}`,
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 400 },
+  });
 
-  // Title
-  rtf += '{\\b\\fs44 Dashboard Report}\\par\n';
-  rtf += `{\\fs20 Generated: ${new Date().toLocaleString('ko-KR')}}\\par\\par\n\n`;
+  // 주요 지표 섹션
+  const kpiHeading = new Paragraph({
+    text: '주요 지표',
+    heading: HeadingLevel.HEADING_1,
+    spacing: { before: 200, after: 200 },
+  });
 
-  // Main KPIs
-  rtf += '{\\cf1\\b\\fs32 \\uc8050\\uc50836 \\uc51648\\uc54364 (Main Indicators)}\\par\n';
-  rtf += '\\par\n';
-  rtf += `{\\b \\uc52509 \\uc52712\\uc50668\\uc51088:} ${data.totalParticipants.toLocaleString()}\\par\n`;
-  rtf += `{\\b \\uc50872\\uc47308\\uc46108 \\uc48120\\uc49496:} ${data.completedMissions.toLocaleString()}\\par\n`;
-  rtf += `{\\b \\uc48120\\uc49496 \\uc50872\\uc47308\\uc50984:} ${data.missionCompletionRate}%\\par\n`;
-  rtf += `{\\b CO2 \\uc51208\\uc44144\\uc47049:} ${data.co2Reduction}kg\\par\n`;
-  rtf += `{\\b \\uc50900\\uc44036 \\uc49457\\uc51109\\uc50984:} ${data.monthlyGrowth}%\\par\n`;
-  rtf += `{\\b \\uc51060\\uc48264 \\uc51452 \\uc49888\\uc44172 \\uc52712\\uc50668\\uc51088:} ${data.weeklyNewParticipants}\\par\n`;
-  rtf += `{\\b \\uc52880\\uc54144\\uc51064 \\uc50872\\uc47308\\uc50984:} ${data.campaignCompletionRate}%\\par\n`;
-  rtf += '\\par\\par\n';
+  const kpiTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+            new TableCell({
+              children: [new Paragraph({ text: '항목', alignment: AlignmentType.CENTER })],
+              shading: { fill: '#10B981' },
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [new Paragraph({ text: '값', alignment: AlignmentType.CENTER })],
+              shading: { fill: '#10B981' },
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph('총 참여자')],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+          new TableCell({
+            children: [new Paragraph(data.totalParticipants.toLocaleString())],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph('완료된 미션')],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+          new TableCell({
+            children: [new Paragraph(data.completedMissions.toLocaleString())],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph('미션 완료율')],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+          new TableCell({
+            children: [new Paragraph(`${data.missionCompletionRate}%`)],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph('CO2 절감량')],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+          new TableCell({
+            children: [new Paragraph(`${data.co2Reduction}kg`)],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph('월간 성장률')],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+          new TableCell({
+            children: [new Paragraph(`${data.monthlyGrowth}%`)],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph('이번 주 신규 참여자')],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+          new TableCell({
+            children: [new Paragraph(data.weeklyNewParticipants.toString())],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph('캠페인 완료율')],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+          new TableCell({
+            children: [new Paragraph(`${data.campaignCompletionRate}%`)],
+            width: { size: 50, type: WidthType.PERCENTAGE },
+          }),
+        ],
+      }),
+    ],
+  });
 
-  // Top Campaign
+  const sections: (Paragraph | Table)[] = [title, dateParagraph, kpiHeading, kpiTable];
+
+  // 최고 성과 캠페인 섹션
   if (data.topCampaign) {
-    rtf += '{\\cf1\\b\\fs32 \\uc52572\\uc44256 \\uc49457\\uc44284 \\uc52880\\uc54144\\uc51064 (Top Campaign)}\\par\n';
-    rtf += '\\par\n';
-    rtf += `{\\b \\uc51228\\uc47785:} ${data.topCampaign.title}\\par\n`;
-    rtf += `{\\b \\uc52712\\uc50668\\uc51088 \\uc49688:} ${data.topCampaign.participants}\\par\n`;
-    rtf += `{\\b \\uc50872\\uc47308\\uc46108 \\uc48120\\uc49496:} ${data.topCampaign.completed}\\par\n`;
-    rtf += `{\\b \\uc50872\\uc47308\\uc50984:} ${data.topCampaign.completionRate}%\\par\n`;
-    rtf += '\\par\\par\n';
+    const campaignHeading = new Paragraph({
+      text: '최고 성과 캠페인',
+      heading: HeadingLevel.HEADING_1,
+      spacing: { before: 400, after: 200 },
+    });
+
+    const campaignTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ text: '속성', alignment: AlignmentType.CENTER })],
+              shading: { fill: '#10B981' },
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [new Paragraph({ text: '값', alignment: AlignmentType.CENTER })],
+              shading: { fill: '#10B981' },
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph('제목')],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [new Paragraph(data.topCampaign.title)],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph('참여자 수')],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [new Paragraph(data.topCampaign.participants.toString())],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph('완료된 미션')],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [new Paragraph(data.topCampaign.completed.toString())],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph('완료율')],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [new Paragraph(`${data.topCampaign.completionRate}%`)],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+          ],
+        }),
+      ],
+    });
+
+    sections.push(campaignHeading, campaignTable);
   }
 
-  // Category Distribution
-  rtf += '{\\cf1\\b\\fs32 \\uc52852\\uc53944\\uc44256\\uc47532\\uc48324 \\uc52712\\uc50668\\uc51088 \\uc48516\\uc54252 (Category Distribution)}\\par\n';
-  rtf += '\\par\n';
-  data.categoryDistribution.forEach(item => {
-    rtf += `{\\b ${item.category}:} ${item.participants}\\uc47749\\par\n`;
+  // 카테고리별 참여자 분포 섹션
+  const categoryHeading = new Paragraph({
+    text: '카테고리별 참여자 분포',
+    heading: HeadingLevel.HEADING_1,
+    spacing: { before: 400, after: 200 },
   });
-  rtf += '\\par\\par\n';
 
-  // Weekly Trend
-  rtf += '{\\cf1\\b\\fs32 \\uc51452\\uc44036 \\uc52712\\uc50668\\uc51088 \\uc52628\\uc51060 (Weekly Trend)}\\par\n';
-  rtf += '\\par\n';
-  data.weeklyTrend.forEach(item => {
-    rtf += `{\\b ${item.date}:} ${item.participants}\\uc47749\\par\n`;
+  const categoryTableRows = [
+    new TableRow({
+      children: [
+        new TableCell({
+          children: [new Paragraph({ text: '카테고리', alignment: AlignmentType.CENTER })],
+          shading: { fill: '#10B981' },
+          width: { size: 50, type: WidthType.PERCENTAGE },
+        }),
+        new TableCell({
+          children: [new Paragraph({ text: '참여자 수', alignment: AlignmentType.CENTER })],
+          shading: { fill: '#10B981' },
+          width: { size: 50, type: WidthType.PERCENTAGE },
+        }),
+      ],
+    }),
+    ...data.categoryDistribution.map(
+      (item) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph(item.category)],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [new Paragraph(item.participants.toString())],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+          ],
+        })
+    ),
+  ];
+
+  const categoryTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: categoryTableRows,
   });
-  rtf += '\\par\n';
 
-  rtf += '}';
+  sections.push(categoryHeading, categoryTable);
 
-  // Download as .hwp file (actually RTF that HWP can open)
-  const blob = new Blob([rtf], { type: 'application/x-hwp' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `dashboard_report_${timestamp}.hwp`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+  // 주간 참여자 추이 섹션
+  let dateRangeText = '주간 참여자 추이';
+  if (data.weeklyTrend && data.weeklyTrend.length > 0) {
+    const firstDate = data.weeklyTrend[0].date;
+    const lastDate = data.weeklyTrend[data.weeklyTrend.length - 1].date;
+    dateRangeText = `주간 참여자 추이 (${firstDate} ~ ${lastDate})`;
+  }
+
+  const trendHeading = new Paragraph({
+    text: dateRangeText,
+    heading: HeadingLevel.HEADING_1,
+    spacing: { before: 400, after: 200 },
+  });
+
+  const trendTableRows = [
+    new TableRow({
+      children: [
+        new TableCell({
+          children: [new Paragraph({ text: '날짜', alignment: AlignmentType.CENTER })],
+          shading: { fill: '#10B981' },
+          width: { size: 50, type: WidthType.PERCENTAGE },
+        }),
+        new TableCell({
+          children: [new Paragraph({ text: '참여자 수', alignment: AlignmentType.CENTER })],
+          shading: { fill: '#10B981' },
+          width: { size: 50, type: WidthType.PERCENTAGE },
+        }),
+      ],
+    }),
+    ...data.weeklyTrend.map(
+      (item) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph(item.date)],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [new Paragraph(item.participants.toString())],
+              width: { size: 50, type: WidthType.PERCENTAGE },
+            }),
+          ],
+        })
+    ),
+  ];
+
+  const trendTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: trendTableRows,
+  });
+
+  sections.push(trendHeading, trendTable);
+
+  // 문서 생성
+  const doc = new Document({
+    sections: [
+      {
+        children: sections,
+      },
+    ],
+  });
+
+  // 파일 다운로드
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `dashboard_report_${timestamp}.docx`);
 };

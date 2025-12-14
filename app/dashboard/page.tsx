@@ -20,7 +20,7 @@ import {
   FileSpreadsheet,
   Download
 } from 'lucide-react';
-import { exportToCSV, exportToPDF, exportToHWP } from '../lib/exportUtils';
+import { exportToCSV, exportToPDF, exportToDOCX } from '../lib/exportUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/UiKit';
 import {
   AreaChart,
@@ -149,7 +149,7 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleExport = async (format: 'csv' | 'pdf' | 'hwp') => {
+  const handleExport = async (format: 'csv' | 'pdf' | 'docx') => {
     if (!overview) return;
 
     switch (format) {
@@ -159,8 +159,8 @@ export default function DashboardPage() {
       case 'pdf':
         await exportToPDF(overview);
         break;
-      case 'hwp':
-        exportToHWP(overview);
+      case 'docx':
+        await exportToDOCX(overview);
         break;
     }
     setShowExportDropdown(false);
@@ -274,13 +274,13 @@ export default function DashboardPage() {
                   </button>
 
                   <button
-                    onClick={() => handleExport('hwp')}
+                    onClick={() => handleExport('docx')}
                     className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors"
                   >
                     <FileText className="w-4 h-4 text-slate-600" />
                     <div className="text-left flex-1">
-                      <p className="text-sm font-semibold text-slate-900">HWP 파일</p>
-                      <p className="text-xs text-slate-500">한글 문서 형식</p>
+                      <p className="text-sm font-semibold text-slate-900">DOCX 파일</p>
+                      <p className="text-xs text-slate-500">Word 문서 형식</p>
                     </div>
                   </button>
                 </div>
