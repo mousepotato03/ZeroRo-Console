@@ -171,11 +171,11 @@ const CampaignList: React.FC<CampaignListProps> = ({
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 font-semibold text-slate-700">캠페인 정보</th>
-                  <th className="px-6 py-4 font-semibold text-slate-700">상태</th>
-                  <th className="px-6 py-4 font-semibold text-slate-700">카테고리</th>
-                  <th className="px-6 py-4 font-semibold text-slate-700">기간</th>
-                  <th className="px-6 py-4 text-right font-semibold text-slate-700">관리</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 text-left">캠페인 정보</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 text-center">상태</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 text-center">카테고리</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 text-center">기간</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 text-center">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -185,33 +185,33 @@ const CampaignList: React.FC<CampaignListProps> = ({
                     className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
                     onClick={() => onCampaignClick(campaign.id)}
                   >
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5 text-left">
                       <div className="font-semibold text-slate-900 text-base mb-1">{campaign.title}</div>
                       <div className="text-xs text-slate-500 truncate max-w-[300px] flex items-center gap-1">
                         <MapPin className="w-3 h-3" /> {campaign.region || '전국'}
                       </div>
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5 text-center">
                       {getStatusBadge(campaign.status)}
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5 text-center">
                       <span className="text-sm text-slate-600">
                         {campaign.category || '-'}
                       </span>
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5 text-center">
                       <div className="flex flex-col text-xs font-medium text-slate-600">
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center justify-center gap-1">
                           <Calendar className="w-3 h-3 text-slate-400"/>
                           {campaign.start_date || '-'}
                         </span>
-                        <span className="pl-4 text-slate-400">
+                        <span className="text-slate-400">
                           ~ {campaign.end_date || '-'}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-right">
-                      <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                    <td className="px-6 py-5 text-center">
+                      <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 transition-colors inline-block" />
                     </td>
                   </tr>
                 ))}
@@ -583,7 +583,7 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
             <div className="space-y-6">
               {/* 섹션 1: 캠페인 이미지 (가장 중요하므로 최상단) */}
               <Card className="border-slate-200 shadow-sm">
-                <CardContent className="p-8">
+                <CardContent className="px-8 pt-5 pb-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
                       <ImagePlus className="w-5 h-5" />
@@ -651,7 +651,7 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
                 {/* 섹션 2: 기본 정보 (제목, 설명) - 좌측/상단 배치 */}
                 <div className="lg:col-span-2 space-y-6">
                   <Card className="h-full border-slate-200 shadow-sm">
-                    <CardContent className="p-8">
+                    <CardContent className="px-8 pt-5 pb-8">
                       <div className="flex items-center gap-2 mb-6">
                         <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
                           <Leaf className="w-5 h-5" />
@@ -686,7 +686,7 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
                 {/* 섹션 3: 상세 설정 (지역, 기간, 유형 등) - 우측/하단 배치 */}
                 <div className="lg:col-span-1 space-y-6">
                   <Card className="h-full border-slate-200 shadow-sm">
-                    <CardContent className="p-8">
+                    <CardContent className="px-8 pt-5 pb-8">
                       <div className="flex items-center gap-2 mb-6">
                         <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
                           <MapPin className="w-5 h-5" />
