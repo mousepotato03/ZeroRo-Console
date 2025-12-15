@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { Button, Card, CardContent, Input, Select, Badge } from '../../components/UiKit';
 import { Mission, MissionType } from '../../types';
+import AddressSearch from '../../components/AddressSearch';
+import KakaoMap from '../../components/KakaoMap';
 
 interface CampaignData {
   id: number;
@@ -329,6 +331,13 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
   const [campaignType, setCampaignType] = useState<'ONLINE' | 'OFFLINE'>('ONLINE');
   const [missions, setMissions] = useState<Mission[]>([]);
 
+  // 오프라인 장소 설정 상태
+  const [locationName, setLocationName] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
+  const [locationRadius, setLocationRadius] = useState(100);
+
   // Image Upload State
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -478,6 +487,13 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
 
     setIsSubmitting(true);
     try {
+      // 오프라인 캠페인인데 위치 정보가 없으면 경고
+      if (campaignType === 'OFFLINE' && (!locationAddress || !locationLat || !locationLng)) {
+        alert('오프라인 캠페인은 장소 설정이 필요합니다. 주소를 검색해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const response = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -491,6 +507,14 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
           campaign_type: campaignType,
           status: 'ACTIVE',
           image_url: imageUrl,
+          // 오프라인 캠페인 위치 정보
+          location: campaignType === 'OFFLINE' ? {
+            name: locationName || null,
+            address: locationAddress,
+            lat: locationLat,
+            lng: locationLng,
+            radius: locationRadius
+          } : null,
           missions: missions.map(m => ({
             title: m.title,
             description: m.description,
@@ -736,6 +760,74 @@ const CampaignBuilder: React.FC<CampaignBuilderProps> = ({ onCancel, onSuccess }
                             />
                            </div>
                         </div>
+
+                        {/* 오프라인 장소 설정 - campaignType이 OFFLINE일 때만 표시 */}
+                        {campaignType === 'OFFLINE' && (
+                          <div className="pt-4 border-t border-slate-100 space-y-4">
+                            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                              <MapPin className="w-4 h-4 text-emerald-500" /> 오프라인 장소 설정
+                            </label>
+
+                            <Input
+                              label="장소명 (선택)"
+                              value={locationName}
+                              onChange={e => setLocationName(e.target.value)}
+                              placeholder="예: 스타벅스 강남점"
+                            />
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">주소</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={locationAddress}
+                                  readOnly
+                                  placeholder="주소를 검색해주세요"
+                                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400"
+                                />
+                                <AddressSearch
+                                  onAddressSelect={(address) => {
+                                    setLocationAddress(address);
+                                  }}
+                                  buttonText="검색"
+                                />
+                              </div>
+                            </div>
+
+                            {locationAddress && (
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700">위치 미리보기</label>
+                                <KakaoMap
+                                  address={locationAddress}
+                                  lat={locationLat}
+                                  lng={locationLng}
+                                  radius={locationRadius}
+                                  onCoordinatesChange={(lat, lng) => {
+                                    setLocationLat(lat);
+                                    setLocationLng(lng);
+                                  }}
+                                  height="200px"
+                                />
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">인증 반경</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  value={locationRadius}
+                                  onChange={e => setLocationRadius(Math.max(10, parseInt(e.target.value) || 100))}
+                                  min={10}
+                                  max={1000}
+                                  className="w-24 px-3 py-2 rounded-lg border border-slate-200 text-sm"
+                                />
+                                <span className="text-sm text-slate-500">미터 (기본: 100m)</span>
+                              </div>
+                              <p className="text-xs text-slate-400">사용자가 이 반경 안에 있어야 위치 인증이 성공합니다.</p>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="pt-4 border-t border-slate-100 space-y-4">
                           <label className="text-sm font-medium text-slate-700 flex items-center gap-2">

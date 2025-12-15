@@ -75,20 +75,21 @@ export async function PATCH(
     }
 
     const body = await request.json();
+    const { location, ...campaignData } = body;
 
     // 캠페인 수정 (본인 소유만)
     const { data: campaign, error } = await supabase
       .from('campaigns')
       .update({
-        title: body.title,
-        description: body.description,
-        image_url: body.image_url,
-        start_date: body.start_date,
-        end_date: body.end_date,
-        region: body.region,
-        status: body.status,
-        category: body.category,
-        campaign_type: body.campaign_type,
+        title: campaignData.title,
+        description: campaignData.description,
+        image_url: campaignData.image_url,
+        start_date: campaignData.start_date,
+        end_date: campaignData.end_date,
+        region: campaignData.region,
+        status: campaignData.status,
+        category: campaignData.category,
+        campaign_type: campaignData.campaign_type,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -98,6 +99,54 @@ export async function PATCH(
 
     if (error || !campaign) {
       return NextResponse.json({ error: '캠페인 수정 실패' }, { status: 404 });
+    }
+
+    // 오프라인 캠페인 위치 정보 처리
+    if (campaignData.campaign_type === 'OFFLINE' && location) {
+      // 기존 위치 정보 확인
+      const { data: existingLocation } = await supabase
+        .from('offline_campaign_locations')
+        .select('id')
+        .eq('campaign_id', id)
+        .single();
+
+      if (existingLocation) {
+        // 기존 위치 정보 수정
+        const { error: updateError } = await supabase
+          .from('offline_campaign_locations')
+          .update({
+            location_lat: location.lat,
+            location_lng: location.lng,
+            location_radius: location.radius || 100,
+            location_address: location.address,
+          })
+          .eq('campaign_id', id);
+
+        if (updateError) {
+          console.error('Location update error:', updateError);
+        }
+      } else {
+        // 새 위치 정보 생성
+        const { error: insertError } = await supabase
+          .from('offline_campaign_locations')
+          .insert({
+            campaign_id: parseInt(id),
+            location_lat: location.lat,
+            location_lng: location.lng,
+            location_radius: location.radius || 100,
+            location_address: location.address,
+          });
+
+        if (insertError) {
+          console.error('Location insert error:', insertError);
+        }
+      }
+    } else if (campaignData.campaign_type === 'ONLINE') {
+      // 온라인으로 변경된 경우 위치 정보 삭제
+      await supabase
+        .from('offline_campaign_locations')
+        .delete()
+        .eq('campaign_id', id);
     }
 
     return NextResponse.json({ data: campaign });
