@@ -174,7 +174,7 @@ export default function LandingPage() {
               onClick={() => setIsApplying(true)}
               className="px-10 h-16 text-xl rounded-full bg-gradient-to-b from-white/90 via-white/60 to-white/30 border border-white/60 text-slate-900 font-bold backdrop-blur-xl shadow-[0_8px_32px_0_rgba(255,255,255,0.1)] transition-all hover:scale-105"
             >
-              파트너십 시작하기 <ArrowRight className="ml-2 w-6 h-6 text-slate-900" />
+              파트너쉽 시작하기 <ArrowRight className="ml-2 w-6 h-6 text-slate-900" />
             </Button>
           </div>
         </div>

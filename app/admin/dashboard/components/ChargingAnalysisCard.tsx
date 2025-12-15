@@ -20,21 +20,21 @@ export default function ChargingAnalysisCard() {
     <Card title="Charging Analysis">
       <div className="flex justify-end mb-4">
         <Button
-          variant={timeframe === 'Week' ? 'default' : 'ghost'}
+          variant={timeframe === 'Week' ? 'primary' : 'ghost'}
           size="sm"
           onClick={() => setTimeframe('Week')}
         >
           Week
         </Button>
         <Button
-          variant={timeframe === 'Month' ? 'default' : 'ghost'}
+          variant={timeframe === 'Month' ? 'primary' : 'ghost'}
           size="sm"
           onClick={() => setTimeframe('Month')}
         >
           Month
         </Button>
         <Button
-          variant={timeframe === 'Year' ? 'default' : 'ghost'}
+          variant={timeframe === 'Year' ? 'primary' : 'ghost'}
           size="sm"
           onClick={() => setTimeframe('Year')}
         >
