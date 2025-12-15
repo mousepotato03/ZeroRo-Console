@@ -111,6 +111,7 @@ const CampaignList: React.FC<CampaignListProps> = ({
   onViewCreate,
   onCampaignClick
 }) => {
+  const router = useRouter();
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'ACTIVE':
@@ -183,9 +184,9 @@ const CampaignList: React.FC<CampaignListProps> = ({
                   <tr
                     key={campaign.id}
                     className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                    onClick={() => onCampaignClick(campaign.id)}
+                    onClick={() => router.push(`/dashboard/campaigns/${campaign.id}`)}
                   >
-                    <td className="px-6 py-5 text-left">
+                    <td className="px-6 py-5">
                       <div className="font-semibold text-slate-900 text-base mb-1">{campaign.title}</div>
                       <div className="text-xs text-slate-500 truncate max-w-[300px] flex items-center gap-1">
                         <MapPin className="w-3 h-3" /> {campaign.region || '전국'}
