@@ -183,7 +183,7 @@ export const exportToPDF = async (data: DashboardOverview) => {
 
   // KPI 카드 (2x2 그리드)
   const cardWidth = (contentWidth - 10) / 2;
-  const cardHeight = 35;
+  const cardHeight = 40; // 높이 증가
   const cardSpacing = 10;
 
   // 총 참여자 카드
@@ -195,7 +195,12 @@ export const exportToPDF = async (data: DashboardOverview) => {
   doc.text('총 참여자', margin + 8, yPos + 8);
   doc.setFontSize(20);
   doc.setFont(fontName, 'bold');
-  doc.text(data.totalParticipants.toLocaleString() + '명', margin + 8, yPos + 20);
+  const totalParticipantsNum = data.totalParticipants.toLocaleString();
+  const totalParticipantsWidth = doc.getTextWidth(totalParticipantsNum);
+  doc.text(totalParticipantsNum, margin + 8, yPos + 22);
+  doc.setFontSize(12);
+  doc.setFont(fontName, 'normal');
+  doc.text('명', margin + 8 + totalParticipantsWidth + 2, yPos + 22);
   doc.setFontSize(9);
   doc.setFont(fontName, 'normal');
   let growthText: string;
@@ -205,7 +210,7 @@ export const exportToPDF = async (data: DashboardOverview) => {
     growthText = data.monthlyGrowth >= 0 ? `전월 대비 +${data.monthlyGrowth}%` : `전월 대비 ${data.monthlyGrowth}%`;
   }
   doc.setTextColor(data.monthlyGrowth >= 0 ? 16 : 239, data.monthlyGrowth >= 0 ? 185 : 68, data.monthlyGrowth >= 0 ? 129 : 68);
-  doc.text(growthText, margin + 8, yPos + 28);
+  doc.text(growthText, margin + 8, yPos + 33, { maxWidth: cardWidth - 16 });
   doc.setTextColor(0, 0, 0);
 
   // 이번 주 신규 카드
@@ -217,13 +222,15 @@ export const exportToPDF = async (data: DashboardOverview) => {
   doc.text('이번 주 신규', margin + cardWidth + cardSpacing + 8, yPos + 8);
   doc.setFontSize(20);
   doc.setFont(fontName, 'bold');
-  doc.text(data.weeklyNewParticipants.toLocaleString() + '명', margin + cardWidth + cardSpacing + 8, yPos + 20);
+  const weeklyNewNum = data.weeklyNewParticipants.toLocaleString();
+  const weeklyNewWidth = doc.getTextWidth(weeklyNewNum);
+  doc.text(weeklyNewNum, margin + cardWidth + cardSpacing + 8, yPos + 22);
+  doc.setFontSize(12);
+  doc.setFont(fontName, 'normal');
+  doc.text('명', margin + cardWidth + cardSpacing + 8 + weeklyNewWidth + 2, yPos + 22);
   doc.setFontSize(9);
   doc.setFont(fontName, 'normal');
-  const newUserPercentage = data.totalParticipants > 0 
-    ? ((data.weeklyNewParticipants / data.totalParticipants) * 100).toFixed(1) 
-    : '0.0';
-  doc.text(`비중 ${newUserPercentage}%`, margin + cardWidth + cardSpacing + 8, yPos + 28);
+  doc.text('최근 7일간 첫 참여', margin + cardWidth + cardSpacing + 8, yPos + 33, { maxWidth: cardWidth - 16 });
 
   yPos += cardHeight + cardSpacing;
 
@@ -239,10 +246,12 @@ export const exportToPDF = async (data: DashboardOverview) => {
   doc.text('미션 성과', margin + 8, yPos + 8);
   doc.setFontSize(20);
   doc.setFont(fontName, 'bold');
-  doc.text(data.missionCompletionRate + '%', margin + 8, yPos + 20);
+  const missionRateText = data.missionCompletionRate + '%';
+  doc.text(missionRateText, margin + 8, yPos + 22, { maxWidth: cardWidth - 16 });
   doc.setFontSize(9);
   doc.setFont(fontName, 'normal');
-  doc.text(`완료 ${data.completedMissions} / 시작 ${startedMissions}개`, margin + 8, yPos + 28);
+  const missionDetailText = `완료 ${data.completedMissions} / 시작 ${startedMissions}개`;
+  doc.text(missionDetailText, margin + 8, yPos + 33, { maxWidth: cardWidth - 16 });
 
   // CO2 절감량 카드
   doc.setDrawColor(229, 231, 235);
@@ -253,11 +262,12 @@ export const exportToPDF = async (data: DashboardOverview) => {
   doc.text('CO2 절감량', margin + cardWidth + cardSpacing + 8, yPos + 8);
   doc.setFontSize(20);
   doc.setFont(fontName, 'bold');
-  doc.text(data.co2Reduction.toLocaleString() + 'kg', margin + cardWidth + cardSpacing + 8, yPos + 20);
+  const co2Text = data.co2Reduction.toLocaleString() + 'kg';
+  doc.text(co2Text, margin + cardWidth + cardSpacing + 8, yPos + 22, { maxWidth: cardWidth - 16 });
   doc.setFontSize(9);
   doc.setFont(fontName, 'normal');
   const topCategoryText = data.topCategory || '없음';
-  doc.text(`Top: ${topCategoryText}`, margin + cardWidth + cardSpacing + 8, yPos + 28);
+  doc.text(`Top: ${topCategoryText}`, margin + cardWidth + cardSpacing + 8, yPos + 33, { maxWidth: cardWidth - 16 });
 
   yPos += cardHeight + 20;
 
@@ -418,6 +428,9 @@ export const exportToPDF = async (data: DashboardOverview) => {
 
     doc.setFont(fontName, 'normal');
     doc.setFontSize(10);
+    const newUserPercentage = data.totalParticipants > 0 
+      ? ((data.weeklyNewParticipants / data.totalParticipants) * 100).toFixed(1) 
+      : '0.0';
     doc.text(`• 전체 참여자 대비 ${newUserPercentage}%를 차지`, margin + 5, yPos);
     yPos += 10;
   }
@@ -886,7 +899,7 @@ export const exportToDOCX = async (data: DashboardOverview) => {
                 new TextRun({ text: '이번 주 신규', bold: true }),
                 new TextRun({ text: '\n' + data.weeklyNewParticipants.toLocaleString() + '명', bold: true, size: 32 }),
                 new TextRun({ 
-                  text: `\n비중 ${data.totalParticipants > 0 ? ((data.weeklyNewParticipants / data.totalParticipants) * 100).toFixed(1) : '0.0'}%`,
+                  text: `\n최근 7일간 첫 참여`,
                   size: 18
                 })
               ]
