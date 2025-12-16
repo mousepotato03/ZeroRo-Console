@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Users,
   Target,
@@ -18,7 +19,10 @@ import {
   ChevronDown,
   FileText,
   FileSpreadsheet,
-  Download
+  Download,
+  Info,
+  LineChart,
+  Filter
 } from 'lucide-react';
 import { exportToCSV, exportToPDF, exportToDOCX } from '../lib/exportUtils';
 import {
@@ -31,7 +35,9 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  BarChart,
+  Bar
 } from 'recharts';
 
 interface DashboardOverview {
@@ -42,6 +48,7 @@ interface DashboardOverview {
   monthlyGrowth: number;
   weeklyNewParticipants: number;
   topCampaign: {
+    id: number;
     title: string;
     participants: number;
     completed: number;
@@ -56,7 +63,9 @@ interface DashboardOverview {
     participants: number;
   }>;
   topCategory: string | null;
+  topCategoryCompleted: number;
   topRegion: string | null;
+  topRegionParticipants: number;
   campaignCompletionRate: number;
 }
 
@@ -105,12 +114,30 @@ const KPICard = ({ title, value, icon: Icon, trend, trendUp, onClick, clickable,
 export default function DashboardPage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showMissionModal, setShowMissionModal] = useState(false);
-  const [missionDetails, setMissionDetails] = useState<any>(null);
   const [showCampaignRankingModal, setShowCampaignRankingModal] = useState(false);
   const [campaignRankings, setCampaignRankings] = useState<any>(null);
   const [showCompletionRateModal, setShowCompletionRateModal] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showParticipantsDrawer, setShowParticipantsDrawer] = useState(false);
+  const [participantsDrawerTab, setParticipantsDrawerTab] = useState<'daily' | 'campaign'>('daily');
+  const [showNewUsersModal, setShowNewUsersModal] = useState(false);
+  const [newUsersData, setNewUsersData] = useState<any>(null);
+  const [showCompletionDrawer, setShowCompletionDrawer] = useState(false);
+  const [completionDrawerTab, setCompletionDrawerTab] = useState<'daily' | 'campaign' | 'category'>('daily');
+  const [completionData, setCompletionData] = useState<any>(null);
+  const [showCO2Modal, setShowCO2Modal] = useState(false);
+  const [co2Data, setCo2Data] = useState<any>(null);
+  const [showTopCampaignDrawer, setShowTopCampaignDrawer] = useState(false);
+  const [topCampaignDrawerSort, setTopCampaignDrawerSort] = useState<'participants' | 'completionRate' | 'completed' | 'co2'>('participants');
+  const [topCampaignData, setTopCampaignData] = useState<any>(null);
+  const [showSegmentDrawer, setShowSegmentDrawer] = useState(false);
+  const [segmentDrawerTab, setSegmentDrawerTab] = useState<'category' | 'region'>('category');
+  const [segmentData, setSegmentData] = useState<any>(null);
+  const [selectedFilter, setSelectedFilter] = useState<{ type: 'category' | 'region' | null; value: string | null }>({ type: null, value: null });
+  const [chartTab, setChartTab] = useState<'weekly' | 'category' | 'region'>('weekly');
+  const [showChartDetailDrawer, setShowChartDetailDrawer] = useState(false);
+  const [chartDetailData, setChartDetailData] = useState<any>(null);
+  const router = useRouter();
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -130,6 +157,20 @@ export default function DashboardPage() {
 
     fetchOverview();
   }, []);
+
+  // 차트 탭 변경 시 지역 분포 데이터 로드
+  useEffect(() => {
+    if (chartTab === 'region' && !segmentData) {
+      fetch('/api/dashboard/segment-details')
+        .then(res => res.json())
+        .then(data => {
+          if (data.data) {
+            setSegmentData(data.data);
+          }
+        })
+        .catch(err => console.error('Failed to load segment data:', err));
+    }
+  }, [chartTab]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -160,18 +201,6 @@ export default function DashboardPage() {
     setShowExportDropdown(false);
   };
 
-  const handleMissionCardClick = async () => {
-    setShowMissionModal(true);
-    try {
-      const response = await fetch('/api/dashboard/mission-details');
-      if (response.ok) {
-        const result = await response.json();
-        setMissionDetails(result.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch mission details:', error);
-    }
-  };
 
   const handleCampaignRankingClick = async () => {
     setShowCampaignRankingModal(true);
@@ -188,6 +217,187 @@ export default function DashboardPage() {
 
   const handleCompletionRateClick = () => {
     setShowCompletionRateModal(true);
+  };
+
+  const handleParticipantsCardClick = async () => {
+    setShowParticipantsDrawer(true);
+    if (!campaignRankings) {
+      try {
+        const response = await fetch('/api/dashboard/campaign-rankings');
+        if (response.ok) {
+          const result = await response.json();
+          setCampaignRankings(result.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch campaign rankings:', error);
+      }
+    }
+  };
+
+  const handleNewUsersCardClick = async () => {
+    setShowNewUsersModal(true);
+    if (!newUsersData) {
+      try {
+        const response = await fetch('/api/dashboard/new-users-details');
+        if (response.ok) {
+          const result = await response.json();
+          setNewUsersData(result.data);
+        } else {
+          // API가 없으면 기본 데이터 구조 생성
+          setNewUsersData({
+            dailyTrend: [],
+            topCampaigns: [],
+            topCategories: []
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch new users data:', error);
+        setNewUsersData({
+          dailyTrend: [],
+          topCampaigns: [],
+          topCategories: []
+        });
+      }
+    }
+  };
+
+  const handleCompletionCardClick = async () => {
+    setShowCompletionDrawer(true);
+    if (!completionData) {
+      try {
+        const response = await fetch('/api/dashboard/completion-details');
+        if (response.ok) {
+          const result = await response.json();
+          setCompletionData(result.data);
+        } else {
+          setCompletionData({
+            dailyTrend: [],
+            campaignStats: [],
+            categoryStats: []
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch completion data:', error);
+        setCompletionData({
+          dailyTrend: [],
+          campaignStats: [],
+          categoryStats: []
+        });
+      }
+    }
+  };
+
+  const handleCO2CardClick = async () => {
+    setShowCO2Modal(true);
+    if (!co2Data) {
+      try {
+        const response = await fetch('/api/dashboard/co2-details');
+        if (response.ok) {
+          const result = await response.json();
+          setCo2Data(result.data);
+        } else {
+          setCo2Data({
+            categoryBreakdown: [],
+            total: 0
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch CO2 data:', error);
+        setCo2Data({
+          categoryBreakdown: [],
+          total: 0
+        });
+      }
+    }
+  };
+
+  const handleTopCampaignCardClick = async () => {
+    setShowTopCampaignDrawer(true);
+    if (!topCampaignData) {
+      try {
+        const response = await fetch('/api/dashboard/campaign-rankings');
+        if (response.ok) {
+          const result = await response.json();
+          setTopCampaignData(result.data);
+        } else {
+          setTopCampaignData({
+            rankings: []
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch campaign rankings:', error);
+        setTopCampaignData({
+          rankings: []
+        });
+      }
+    }
+  };
+
+  const handleCampaignClick = (campaignId: number) => {
+    router.push(`/dashboard/campaigns/${campaignId}`);
+  };
+
+  const handleSegmentCardClick = async () => {
+    setShowSegmentDrawer(true);
+    if (!segmentData) {
+      try {
+        const response = await fetch('/api/dashboard/segment-details');
+        if (response.ok) {
+          const result = await response.json();
+          setSegmentData(result.data);
+        } else {
+          setSegmentData({
+            categoryDistribution: [],
+            regionDistribution: []
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch segment data:', error);
+        setSegmentData({
+          categoryDistribution: [],
+          regionDistribution: []
+        });
+      }
+    }
+  };
+
+  const handleApplyFilter = () => {
+    if (selectedFilter.type && selectedFilter.value) {
+      // 필터 적용 로직 (향후 구현)
+      console.log('Apply filter:', selectedFilter);
+      // 예: URL 파라미터 추가 또는 상태 업데이트
+      setShowSegmentDrawer(false);
+    }
+  };
+
+  const handleChartElementClick = async (type: 'category' | 'region' | 'date', value: string) => {
+    setShowChartDetailDrawer(true);
+    try {
+      const response = await fetch(`/api/dashboard/chart-detail?type=${type}&value=${encodeURIComponent(value)}`);
+      if (response.ok) {
+        const result = await response.json();
+        setChartDetailData(result.data);
+      } else {
+        setChartDetailData({
+          type,
+          value,
+          participants: 0,
+          completed: 0,
+          completionRate: 0,
+          co2Reduction: 0
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch chart detail:', error);
+      setChartDetailData({
+        type,
+        value,
+        participants: 0,
+        completed: 0,
+        completionRate: 0,
+        co2Reduction: 0
+      });
+    }
   };
 
   if (loading) {
@@ -294,140 +504,227 @@ export default function DashboardPage() {
 
       {/* Row 1: 주요 KPI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPICard
-          title="총 참여자"
-          value={overview.totalParticipants.toLocaleString()}
-          icon={Users}
-          trend={overview.monthlyGrowth !== 0 ? `${overview.monthlyGrowth > 0 ? '+' : ''}${overview.monthlyGrowth}%` : null}
-          trendUp={overview.monthlyGrowth >= 0}
-          color="emerald"
-        />
-        <KPICard
-          title="이번 주 신규"
-          value={overview.weeklyNewParticipants}
-          icon={Activity}
-          trend={null}
-          trendUp={true}
-          color="blue"
-        />
-        <KPICard
-          title="미션 완료율"
-          value={`${overview.missionCompletionRate}%`}
-          icon={TrendingUp}
-          trend={null}
-          trendUp={overview.missionCompletionRate >= 50}
-          color="purple"
-        />
-        <KPICard
-          title="CO2 절감량"
-          value={`${overview.co2Reduction}kg`}
-          icon={Leaf}
-          trend={null}
-          trendUp={true}
-          color="teal"
-        />
+        {/* 총 참여자 카드 (새 디자인) */}
+        <div
+          className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all group relative"
+          onClick={handleParticipantsCardClick}
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-600 mb-1">총 참여자</h3>
+              <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                {overview.totalParticipants.toLocaleString()}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className={`text-sm font-medium ${overview.monthlyGrowth >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              전월 대비 {overview.monthlyGrowth > 0 ? '+' : ''}{overview.monthlyGrowth}%
+            </p>
+          </div>
+          <div className="absolute bottom-4 right-4 text-xs text-slate-400 group-hover:text-emerald-600 transition-colors">
+            자세히 →
+          </div>
+        </div>
+        {/* 이번 주 신규 카드 (새 디자인) */}
+        <div
+          className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all group relative"
+          onClick={handleNewUsersCardClick}
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-600 mb-1">이번 주 신규</h3>
+              <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                {overview.weeklyNewParticipants.toLocaleString()}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-blue-600">
+              신규 비중 {overview.totalParticipants > 0 ? ((overview.weeklyNewParticipants / overview.totalParticipants) * 100).toFixed(1) : '0.0'}%
+            </p>
+          </div>
+          <div className="absolute bottom-4 right-4 text-xs text-slate-400 group-hover:text-blue-600 transition-colors">
+            자세히 →
+          </div>
+        </div>
+        {/* 미션 성과 카드 (새 디자인) */}
+        <div
+          className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all group relative"
+          onClick={handleCompletionCardClick}
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-600 mb-1">미션 성과</h3>
+              <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                {overview.missionCompletionRate}%
+              </p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-purple-600">
+              완료 {overview.completedMissions.toLocaleString()} / 시작 {overview.missionCompletionRate > 0 ? Math.round(overview.completedMissions / (overview.missionCompletionRate / 100)).toLocaleString() : '0'}개
+            </p>
+          </div>
+          <div className="absolute bottom-4 right-4 text-xs text-slate-400 group-hover:text-purple-600 transition-colors">
+            자세히 →
+          </div>
+        </div>
+        {/* CO2 절감량 카드 (새 디자인) */}
+        <div
+          className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all group relative"
+          onClick={handleCO2CardClick}
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-600 mb-1">CO2 절감량</h3>
+              <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                {overview.co2Reduction.toLocaleString()} kg
+              </p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-teal-600">
+              Top 기여: {overview.topCategory || '없음'} {(() => {
+                // CO2 데이터가 로드되면 사용, 아니면 기본 계산
+                if (co2Data && co2Data.categoryBreakdown && co2Data.categoryBreakdown.length > 0 && overview.topCategory) {
+                  const topCategoryData = co2Data.categoryBreakdown.find((c: any) => c.category === overview.topCategory);
+                  const totalCO2 = co2Data.total || overview.co2Reduction;
+                  if (topCategoryData && totalCO2 > 0) {
+                    return Math.round((topCategoryData.co2 / totalCO2) * 100);
+                  }
+                }
+                // 기본값: 카테고리 분포에서 계산
+                if (overview.topCategory && overview.categoryDistribution.length > 0) {
+                  const topCategoryDist = overview.categoryDistribution.find(c => c.category === overview.topCategory);
+                  const totalParticipants = overview.categoryDistribution.reduce((sum, c) => sum + c.participants, 0);
+                  if (topCategoryDist && totalParticipants > 0) {
+                    return Math.round((topCategoryDist.participants / totalParticipants) * 100);
+                  }
+                }
+                return '0';
+              })()}%
+            </p>
+          </div>
+          <div className="absolute bottom-4 right-4 text-xs text-slate-400 group-hover:text-teal-600 transition-colors">
+            자세히 →
+          </div>
+        </div>
       </div>
 
       {/* Row 2: 상세 카드 (클릭 가능) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <KPICard
-          title="완료된 미션"
-          value={overview.completedMissions.toLocaleString()}
-          icon={Target}
-          trend={null}
-          trendUp={true}
-          clickable={true}
-          onClick={handleMissionCardClick}
-          color="slate"
-        />
-        
-        {/* 최고 성과 캠페인 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 최고 성과 캠페인 카드 (새 디자인) */}
         <div
-          className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:-translate-y-1 hover:border-orange-200 transition-all group"
-          onClick={handleCampaignRankingClick}
+          className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all group relative"
+          onClick={handleTopCampaignCardClick}
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-orange-50 text-orange-600 rounded-xl">
-               <Award className="w-6 h-6" />
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-600 mb-1">최고 성과 캠페인</h3>
+              <p className="text-xl font-bold text-slate-900 tracking-tight truncate">
+                {overview.topCampaign?.title || '데이터 없음'}
+              </p>
             </div>
-            <span className="text-xs text-slate-400 group-hover:text-orange-600 transition-colors">순위보기 →</span>
           </div>
-          <p className="text-sm font-medium text-slate-500 mb-1">최고 성과 캠페인</p>
-          <h3 className="text-xl font-bold text-slate-900 mb-2 truncate">
-            {overview.topCampaign?.title || '데이터 없음'}
-          </h3>
           {overview.topCampaign && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-md font-medium">
-                {overview.topCampaign.participants}명 참여
-              </span>
-              <span className="text-xs px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md font-medium">
-                {overview.topCampaign.completionRate}% 완료율
-              </span>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-orange-600">
+                참여자 {overview.topCampaign.participants.toLocaleString()}
+              </p>
+              <p className="text-xs text-slate-500">
+                완료율 {overview.topCampaign.completionRate}% · 완료 {overview.topCampaign.completed.toLocaleString()}
+              </p>
             </div>
           )}
+          <div className="absolute bottom-4 right-4 text-xs text-slate-400 group-hover:text-orange-600 transition-colors">
+            자세히 →
+          </div>
         </div>
 
-        {/* 캠페인 완료율 카드 */}
+        {/* 전체 캠페인 완료율 카드 (새 디자인) */}
         <div
-          className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:-translate-y-1 hover:border-blue-200 transition-all group"
+          className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all group relative"
           onClick={handleCompletionRateClick}
         >
-           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-               <TrendingUp className="w-6 h-6" />
-            </div>
-            <span className="text-xs text-slate-400 group-hover:text-blue-600 transition-colors">분석보기 →</span>
-          </div>
-          <p className="text-sm font-medium text-slate-500 mb-1">전체 캠페인 완료율</p>
-          <h3 className="text-2xl font-bold text-slate-900 mb-2">
-            {overview.campaignCompletionRate}%
-          </h3>
-          <p className="text-xs text-slate-500">참여자가 미션을 완료하는 비율</p>
-        </div>
-      </div>
-      
-       {/* Row 3: 인기 카테고리 + 최다 활동 지역 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-               <Trophy className="w-6 h-6" />
-            </div>
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm font-medium text-slate-500">인기 카테고리</p>
-              <h3 className="text-xl font-bold text-slate-900">{overview.topCategory || 'N/A'}</h3>
+              <h3 className="text-sm font-semibold text-slate-600 mb-1">전체 캠페인 완료율</h3>
+              <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                {overview.campaignCompletionRate}%
+              </p>
             </div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <div className="flex items-center gap-4">
-             <div className="p-3 bg-teal-50 text-teal-600 rounded-xl">
-               <MapPin className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">최다 활동 지역</p>
-              <h3 className="text-xl font-bold text-slate-900">{overview.topRegion || 'N/A'}</h3>
-            </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-blue-600">
+              참여자가 미션을 완료하는 비율
+            </p>
+          </div>
+          <div className="absolute bottom-4 right-4 text-xs text-slate-400 group-hover:text-blue-600 transition-colors">
+            자세히 →
           </div>
         </div>
       </div>
 
 
-      {/* Row 4: Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Main Chart - Weekly Trend */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-               <Activity className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900">주간 참여자 추이</h3>
+      {/* 차트 섹션: 트렌드 & 분포 */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        {/* 섹션 헤더 */}
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">트렌드 & 분포</h2>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setChartTab('weekly')}
+              className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+                chartTab === 'weekly'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              주간 참여자 추이
+            </button>
+            <button
+              onClick={() => setChartTab('category')}
+              className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+                chartTab === 'category'
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              카테고리 분포
+            </button>
+            <button
+              onClick={() => setChartTab('region')}
+              className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+                chartTab === 'region'
+                  ? 'bg-teal-100 text-teal-700'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              지역 분포
+            </button>
           </div>
-          <div className="w-full h-[300px]">
+        </div>
+
+        {/* 차트 컨텐츠 */}
+        <div className="p-6">
+          {chartTab === 'weekly' && (
+            <div className="w-full h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={weeklyTrendFormatted} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <AreaChart 
+                  data={weeklyTrendFormatted} 
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  onClick={(data: any) => {
+                    if (data && data.activePayload && data.activePayload[0]) {
+                      const payload = data.activePayload[0].payload;
+                      // 날짜를 원본 형식으로 변환
+                      const originalDate = overview.weeklyTrend.find(item => 
+                        new Date(item.date).toLocaleDateString('ko-KR', { weekday: 'short' }) === payload.date
+                      )?.date || payload.date;
+                      handleChartElementClick('date', originalDate);
+                    }
+                  }}
+                >
                   <defs>
                     <linearGradient id="colorParticipants" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
@@ -441,209 +738,151 @@ export default function DashboardPage() {
                     contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     itemStyle={{ color: '#0f172a', fontSize: '14px', fontWeight: 600 }}
                   />
-                  <Area type="monotone" dataKey="participants" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorParticipants)" />
+                  <Area 
+                    type="monotone" 
+                    dataKey="participants" 
+                    stroke="#10b981" 
+                    strokeWidth={2} 
+                    fillOpacity={1} 
+                    fill="url(#colorParticipants)"
+                    style={{ cursor: 'pointer' }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Category Distribution - Pie Chart */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-6">
-             <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
-                <Trophy className="w-5 h-5" />
-             </div>
-            <h3 className="text-lg font-bold text-slate-900">카테고리별 참여자 분포</h3>
-          </div>
-          
-          <div className="flex flex-col">
-            {overview.categoryDistribution.length > 0 ? (
-              <>
-                 <div className="h-[250px] w-full flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={overview.categoryDistribution.map((item, index) => ({
-                          name: item.category,
-                          value: item.participants,
-                          color: COLORS[index % COLORS.length]
-                        }))}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {overview.categoryDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#fff',
-                          borderRadius: '12px',
-                          border: '1px solid #e2e8f0',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                          padding: '12px'
-                        }}
-                        formatter={(value: any) => [`${value}명`, '참여자']}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                {/* Legend */}
-                <div className="mt-4 grid grid-cols-2 gap-3 w-full">
-                  {overview.categoryDistribution.map((item, index) => {
-                    const total = overview.categoryDistribution.reduce((sum, cat) => sum + cat.participants, 0);
-                    const percentage = total > 0 ? ((item.participants / total) * 100).toFixed(1) : '0';
-                    return (
-                      <div
-                        key={item.category}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors"
-                      >
-                        <div
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-900 truncate">{item.category}</p>
-                          <p className="text-xs text-slate-500">{item.participants}명 ({percentage}%)</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <div className="text-center text-slate-400 py-20 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                데이터가 없습니다
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Mission Details Modal */}
-      {showMissionModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="bg-white px-6 py-4 flex justify-between items-center border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Target className="w-5 h-5 text-emerald-600" />
-                완료된 미션 상세
-              </h2>
-              <button
-                onClick={() => setShowMissionModal(false)}
-                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
+          )}
 
-            {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)] bg-slate-50/50">
-              {missionDetails ? (
+          {chartTab === 'category' && (
+            <div className="flex flex-col">
+              {overview.categoryDistribution.length > 0 ? (
                 <>
-                  {/* Summary Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                        <span className="text-sm font-medium text-slate-500">완료된 미션</span>
-                      </div>
-                      <p className="text-3xl font-bold text-slate-900">
-                        {missionDetails.completedMissions.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Circle className="w-5 h-5 text-slate-400" />
-                        <span className="text-sm font-medium text-slate-500">전체 미션</span>
-                      </div>
-                      <p className="text-3xl font-bold text-slate-900">
-                        {missionDetails.totalMissions.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-5 h-5 text-blue-600" />
-                        <span className="text-sm font-medium text-slate-500">완료율</span>
-                      </div>
-                      <p className="text-3xl font-bold text-slate-900">
-                        {missionDetails.completionRate}%
-                      </p>
-                    </div>
+                  <div className="h-[350px] w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={overview.categoryDistribution.map((item, index) => ({
+                            name: item.category,
+                            value: item.participants,
+                            color: COLORS[index % COLORS.length]
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={80}
+                          outerRadius={120}
+                          paddingAngle={5}
+                          dataKey="value"
+                          onClick={(data: any) => {
+                            if (data && data.name) {
+                              handleChartElementClick('category', data.name);
+                            }
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {overview.categoryDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#fff',
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                            padding: '12px'
+                          }}
+                          formatter={(value: any, name: any, props: any) => {
+                            const total = overview.categoryDistribution.reduce((sum, cat) => sum + cat.participants, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+                            return [`${value}명 (${percentage}%)`, '참여자'];
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-
-                  {/* Campaign-wise breakdown */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                      캠페인별 현황
-                    </h3>
-                    {missionDetails.campaigns && missionDetails.campaigns.length > 0 ? (
-                      <div className="space-y-3">
-                        {missionDetails.campaigns.map((campaign: any, index: number) => (
+                  {/* Legend */}
+                  <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3 w-full">
+                    {overview.categoryDistribution.map((item, index) => {
+                      const total = overview.categoryDistribution.reduce((sum, cat) => sum + cat.participants, 0);
+                      const percentage = total > 0 ? ((item.participants / total) * 100).toFixed(1) : '0';
+                      return (
+                        <div
+                          key={item.category}
+                          onClick={() => handleChartElementClick('category', item.category)}
+                          className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                        >
                           <div
-                            key={campaign.id}
-                            className="bg-white border border-slate-200 rounded-xl p-5 hover:border-emerald-300 hover:shadow-md transition-all"
-                          >
-                            <div className="flex justify-between items-start mb-4">
-                              <h4 className="font-bold text-slate-900 text-lg">{campaign.title}</h4>
-                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${campaign.completionRate >= 70
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : campaign.completionRate >= 40
-                                    ? 'bg-amber-100 text-amber-700'
-                                    : 'bg-red-100 text-red-700'
-                                }`}>
-                                {campaign.completionRate}% 완료
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              <div className="bg-slate-50 p-3 rounded-lg text-center">
-                                <p className="text-slate-500 text-xs mb-1">완료</p>
-                                <p className="font-bold text-emerald-600 text-lg">{campaign.completed}</p>
-                              </div>
-                              <div className="bg-slate-50 p-3 rounded-lg text-center">
-                                <p className="text-slate-500 text-xs mb-1">진행중</p>
-                                <p className="font-bold text-blue-600 text-lg">{campaign.inProgress}</p>
-                              </div>
-                              <div className="bg-slate-50 p-3 rounded-lg text-center">
-                                <p className="text-slate-500 text-xs mb-1">대기중</p>
-                                <p className="font-bold text-amber-600 text-lg">{campaign.pending}</p>
-                              </div>
-                              <div className="bg-slate-50 p-3 rounded-lg text-center">
-                                <p className="text-slate-500 text-xs mb-1">실패</p>
-                                <p className="font-bold text-red-600 text-lg">{campaign.failed}</p>
-                              </div>
-                            </div>
-                            {/* Progress bar */}
-                            <div className="mt-4 bg-slate-100 rounded-full h-2 overflow-hidden">
-                              <div
-                                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                                style={{ width: `${campaign.completionRate}%` }}
-                              />
-                            </div>
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{item.category}</p>
+                            <p className="text-xs text-slate-500">{item.participants}명 ({percentage}%)</p>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center text-slate-400 py-12 bg-white rounded-xl border border-dashed border-slate-200">
-                        미션 데이터가 없습니다
-                      </div>
-                    )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </>
               ) : (
-                <div className="flex items-center justify-center py-20">
-                  <div className="text-slate-400 animate-pulse">데이터를 불러오는 중...</div>
+                <div className="text-center text-slate-400 py-20 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                  데이터가 없습니다
                 </div>
               )}
             </div>
-          </div>
+          )}
+
+          {chartTab === 'region' && (
+            <div className="w-full h-[400px]">
+              {segmentData && segmentData.regionDistribution && segmentData.regionDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={segmentData.regionDistribution.map((item: any) => ({
+                      region: item.region,
+                      participants: item.participants
+                    }))}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                    onClick={(data: any) => {
+                      if (data && data.activePayload && data.activePayload[0]) {
+                        const payload = data.activePayload[0].payload;
+                        if (payload && payload.region) {
+                          handleChartElementClick('region', payload.region);
+                        }
+                      }
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="region" 
+                      stroke="#64748b" 
+                      fontSize={12} 
+                      tickLine={false} 
+                      axisLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                      formatter={(value: any) => [`${value}명`, '참여자']}
+                    />
+                    <Bar 
+                      dataKey="participants" 
+                      fill="#14b8a6"
+                      radius={[8, 8, 0, 0]}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-slate-400">
+                  {!segmentData ? '데이터를 불러오는 중...' : '지역 데이터가 없습니다'}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Campaign Rankings Modal */}
       {showCampaignRankingModal && (
@@ -852,6 +1091,847 @@ export default function DashboardPage() {
                       </div>
                     </>
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 총 참여자 상세 모달 */}
+      {showParticipantsDrawer && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* 모달 헤더 */}
+            <div className="bg-white px-6 py-4 flex justify-between items-center border-b border-slate-100">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-emerald-600" />
+                  총 참여자 상세
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">{overview.totalParticipants.toLocaleString()}명</p>
+              </div>
+              <button
+                onClick={() => setShowParticipantsDrawer(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 탭 */}
+            <div className="border-b border-slate-200 px-6">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setParticipantsDrawerTab('daily')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    participantsDrawerTab === 'daily'
+                      ? 'border-emerald-500 text-emerald-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  일별 추이
+                </button>
+                <button
+                  onClick={() => setParticipantsDrawerTab('campaign')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    participantsDrawerTab === 'campaign'
+                      ? 'border-emerald-500 text-emerald-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  캠페인별
+                </button>
+              </div>
+            </div>
+
+            {/* 모달 컨텐츠 */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)] bg-slate-50/50">
+              {participantsDrawerTab === 'daily' && (
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">일별 참여자 추이</h3>
+                  <div className="bg-white rounded-xl p-6 border border-slate-200">
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={overview.weeklyTrend.map(item => ({
+                          date: new Date(item.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+                          participants: item.participants
+                        }))} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorDailyParticipants" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="participants"
+                            stroke="#10b981"
+                            strokeWidth={2}
+                            fillOpacity={1}
+                            fill="url(#colorDailyParticipants)"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {participantsDrawerTab === 'campaign' && (
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">캠페인별 참여자</h3>
+                  {campaignRankings && campaignRankings.rankings && campaignRankings.rankings.length > 0 ? (
+                    <div className="space-y-3">
+                      {campaignRankings.rankings.slice(0, 10).map((campaign: any, index: number) => (
+                        <div
+                          key={campaign.id}
+                          className="bg-white rounded-xl p-4 border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">
+                                  {index + 1}
+                                </span>
+                                <h4 className="font-bold text-slate-900">{campaign.title}</h4>
+                              </div>
+                              <div className="flex items-center gap-4 ml-9">
+                                <div>
+                                  <p className="text-xs text-slate-500">참여자</p>
+                                  <p className="text-sm font-bold text-slate-900">{campaign.participants}명</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-slate-500">완료율</p>
+                                  <p className="text-sm font-bold text-emerald-600">{campaign.completionRate}%</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-slate-400 py-20 bg-white rounded-xl border border-dashed border-slate-200">
+                      캠페인 데이터가 없습니다
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 이번 주 신규 상세 모달 */}
+      {showNewUsersModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-white px-6 py-4 flex justify-between items-center border-b border-slate-100">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-blue-600" />
+                  이번 주 신규 참여자 상세
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">최근 7일간 첫 참여한 신규 사용자</p>
+              </div>
+              <button
+                onClick={() => setShowNewUsersModal(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] bg-slate-50/50">
+              {newUsersData ? (
+                <div className="space-y-6">
+                  {/* 일별 신규 추이 */}
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-4">일별 신규 추이 (7일)</h3>
+                    <div className="bg-white rounded-xl p-6 border border-slate-200">
+                      <div className="h-[300px]">
+                        {newUsersData.dailyTrend && newUsersData.dailyTrend.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={newUsersData.dailyTrend.map((item: any) => ({
+                              date: new Date(item.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+                              newUsers: item.newUsers
+                            }))} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="colorNewUsers" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                              <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                              <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                              <Tooltip
+                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="newUsers"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                fillOpacity={1}
+                                fill="url(#colorNewUsers)"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-slate-400">
+                            데이터를 불러오는 중...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 신규 유입 캠페인 Top 5 */}
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-4">신규 유입 캠페인 Top 5</h3>
+                      {newUsersData.topCampaigns && newUsersData.topCampaigns.length > 0 ? (
+                        <div className="space-y-3">
+                          {newUsersData.topCampaigns.slice(0, 5).map((campaign: any, index: number) => (
+                            <div
+                              key={campaign.id || index}
+                              className="bg-white rounded-xl p-4 border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 flex-1">
+                                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                                    {index + 1}
+                                  </span>
+                                  <div className="flex-1">
+                                    <h4 className="font-bold text-slate-900 text-sm">{campaign.title || campaign.name}</h4>
+                                    <p className="text-xs text-slate-500 mt-1">신규 {campaign.newUsers || 0}명</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center text-slate-400 py-12 bg-white rounded-xl border border-dashed border-slate-200">
+                          캠페인 데이터가 없습니다
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 신규 유입 카테고리 Top 5 */}
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-4">신규 유입 카테고리 Top 5</h3>
+                      {newUsersData.topCategories && newUsersData.topCategories.length > 0 ? (
+                        <div className="space-y-3">
+                          {newUsersData.topCategories.slice(0, 5).map((category: any, index: number) => (
+                            <div
+                              key={category.category || index}
+                              className="bg-white rounded-xl p-4 border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 flex-1">
+                                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                                    {index + 1}
+                                  </span>
+                                  <div className="flex-1">
+                                    <h4 className="font-bold text-slate-900 text-sm">{category.category || category.name}</h4>
+                                    <p className="text-xs text-slate-500 mt-1">신규 {category.newUsers || 0}명</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center text-slate-400 py-12 bg-white rounded-xl border border-dashed border-slate-200">
+                          카테고리 데이터가 없습니다
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-20">
+                  <div className="text-slate-400 animate-pulse">데이터를 불러오는 중...</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 미션 성과 상세 모달 */}
+      {showCompletionDrawer && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* 모달 헤더 */}
+            <div className="bg-white px-6 py-4 flex justify-between items-center border-b border-slate-100">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-purple-600" />
+                  완료율 분석
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">미션 완료율 {overview.missionCompletionRate}%</p>
+              </div>
+              <button
+                onClick={() => setShowCompletionDrawer(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 탭 */}
+            <div className="border-b border-slate-200 px-6">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setCompletionDrawerTab('daily')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    completionDrawerTab === 'daily'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  일별 완료율
+                </button>
+                <button
+                  onClick={() => setCompletionDrawerTab('campaign')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    completionDrawerTab === 'campaign'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  캠페인별
+                </button>
+                <button
+                  onClick={() => setCompletionDrawerTab('category')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    completionDrawerTab === 'category'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  카테고리별
+                </button>
+              </div>
+            </div>
+
+            {/* 모달 컨텐츠 */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)] bg-slate-50/50">
+              {completionDrawerTab === 'daily' && (
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">일별 완료율 추이</h3>
+                  <div className="bg-white rounded-xl p-6 border border-slate-200">
+                    <div className="h-[300px]">
+                      {completionData && completionData.dailyTrend && completionData.dailyTrend.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={completionData.dailyTrend.map((item: any) => ({
+                            date: new Date(item.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+                            completionRate: item.completionRate
+                          }))} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorCompletionRate" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                              formatter={(value: any) => [`${value}%`, '완료율']}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="completionRate"
+                              stroke="#a855f7"
+                              strokeWidth={2}
+                              fillOpacity={1}
+                              fill="url(#colorCompletionRate)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-slate-400">
+                          데이터를 불러오는 중...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {completionDrawerTab === 'campaign' && (
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">캠페인별 완료율</h3>
+                  {completionData && completionData.campaignStats && completionData.campaignStats.length > 0 ? (
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">캠페인</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100">
+                                완료율
+                              </th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100">
+                                완료 수
+                              </th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100">
+                                참여자 수
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {completionData.campaignStats.map((campaign: any) => (
+                              <tr key={campaign.id} className="hover:bg-slate-50">
+                                <td className="px-4 py-3 font-medium text-slate-900">{campaign.title}</td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`font-semibold ${campaign.completionRate >= 70 ? 'text-emerald-600' : campaign.completionRate >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+                                    {campaign.completionRate}%
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center text-slate-600">{campaign.completed.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-center text-slate-600">{campaign.participants.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-slate-400 py-20 bg-white rounded-xl border border-dashed border-slate-200">
+                      캠페인 데이터가 없습니다
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {completionDrawerTab === 'category' && (
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">카테고리별 완료율</h3>
+                  {completionData && completionData.categoryStats && completionData.categoryStats.length > 0 ? (
+                    <div className="space-y-3">
+                      {completionData.categoryStats.map((category: any, index: number) => (
+                        <div
+                          key={category.category || index}
+                          className="bg-white rounded-xl p-4 border border-slate-200 hover:border-purple-300 hover:shadow-md transition-all"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-sm font-bold">
+                                {index + 1}
+                              </span>
+                              <div>
+                                <h4 className="font-bold text-slate-900">{category.category}</h4>
+                                <p className="text-xs text-slate-500 mt-1">완료율 {category.completionRate}%</p>
+                              </div>
+                            </div>
+                            {category.co2Contribution !== undefined && (
+                              <div className="text-right">
+                                <p className="text-xs text-slate-500">CO2 기여</p>
+                                <p className="text-sm font-bold text-emerald-600">{category.co2Contribution.toFixed(1)}kg</p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-11 bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                category.completionRate >= 70 ? 'bg-emerald-500' : category.completionRate >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                              }`}
+                              style={{ width: `${category.completionRate}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-slate-400 py-20 bg-white rounded-xl border border-dashed border-slate-200">
+                      카테고리 데이터가 없습니다
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CO2 절감량 상세 모달 */}
+      {showCO2Modal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-white px-6 py-4 flex justify-between items-center border-b border-slate-100">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Leaf className="w-5 h-5 text-teal-600" />
+                  CO2 계산 상세
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">카테고리별 CO2 절감량 계산 내역</p>
+              </div>
+              <button
+                onClick={() => setShowCO2Modal(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] bg-slate-50/50">
+              {co2Data ? (
+                <div className="space-y-6">
+                  {/* 테이블 */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">카테고리</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">완료 수</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">계수 (kg/회)</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">CO2 (kg)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {co2Data.categoryBreakdown && co2Data.categoryBreakdown.length > 0 ? (
+                            co2Data.categoryBreakdown.map((item: any, index: number) => (
+                              <tr key={item.category || index} className="hover:bg-slate-50">
+                                <td className="px-4 py-3 font-medium text-slate-900">{item.category}</td>
+                                <td className="px-4 py-3 text-center text-slate-600">{item.completed.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-center text-slate-600">{item.coefficient}</td>
+                                <td className="px-4 py-3 text-center font-semibold text-teal-600">{item.co2.toLocaleString()}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                                데이터가 없습니다
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                        <tfoot className="bg-teal-50 border-t-2 border-teal-200">
+                          <tr>
+                            <td className="px-4 py-4 font-bold text-slate-900">총합</td>
+                            <td className="px-4 py-4 text-center font-bold text-slate-900">
+                              {co2Data.categoryBreakdown?.reduce((sum: number, item: any) => sum + item.completed, 0).toLocaleString() || '0'}
+                            </td>
+                            <td className="px-4 py-4 text-center text-slate-600">-</td>
+                            <td className="px-4 py-4 text-center font-bold text-teal-700 text-lg">
+                              {co2Data.total?.toLocaleString() || overview.co2Reduction.toLocaleString()} kg
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 계수 편집 안내 (선택) */}
+                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-blue-900 mb-1">계수 편집은 어디서 하나요?</p>
+                        <p className="text-xs text-blue-700 leading-relaxed">
+                          CO2 계수는 시스템 관리자에게 문의하시거나, 관리자 페이지에서 설정할 수 있습니다. 
+                          현재 계수는 환경 보호 활동의 표준 값을 기반으로 설정되어 있습니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-20">
+                  <div className="text-slate-400 animate-pulse">데이터를 불러오는 중...</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top 캠페인 상세 모달 */}
+      {showTopCampaignDrawer && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* 모달 헤더 */}
+            <div className="bg-white px-6 py-4 flex justify-between items-center border-b border-slate-100">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-orange-600" />
+                  캠페인 순위
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">캠페인별 성과 비교</p>
+              </div>
+              <button
+                onClick={() => setShowTopCampaignDrawer(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 정렬 탭 */}
+            <div className="border-b border-slate-200 px-6">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setTopCampaignDrawerSort('participants')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    topCampaignDrawerSort === 'participants'
+                      ? 'border-orange-500 text-orange-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  참여자순
+                </button>
+                <button
+                  onClick={() => setTopCampaignDrawerSort('completionRate')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    topCampaignDrawerSort === 'completionRate'
+                      ? 'border-orange-500 text-orange-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  완료율순
+                </button>
+                <button
+                  onClick={() => setTopCampaignDrawerSort('completed')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    topCampaignDrawerSort === 'completed'
+                      ? 'border-orange-500 text-orange-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  완료수순
+                </button>
+                <button
+                  onClick={() => setTopCampaignDrawerSort('co2')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    topCampaignDrawerSort === 'co2'
+                      ? 'border-orange-500 text-orange-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  CO2순
+                </button>
+              </div>
+            </div>
+
+            {/* 모달 컨텐츠 */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)] bg-slate-50/50">
+              {topCampaignData && topCampaignData.rankings && topCampaignData.rankings.length > 0 ? (
+                <div className="space-y-3">
+                  {(() => {
+                    // 정렬된 리스트 생성
+                    const sortedRankings = [...topCampaignData.rankings].sort((a, b) => {
+                      switch (topCampaignDrawerSort) {
+                        case 'participants':
+                          return b.participants - a.participants;
+                        case 'completionRate':
+                          return b.completionRate - a.completionRate;
+                        case 'completed':
+                          return b.completed - a.completed;
+                        case 'co2':
+                          return (b.co2Reduction || 0) - (a.co2Reduction || 0);
+                        default:
+                          return 0;
+                      }
+                    });
+
+                    return sortedRankings.map((campaign: any, index: number) => (
+                      <div
+                        key={campaign.id}
+                        onClick={() => handleCampaignClick(campaign.id)}
+                        className="bg-white rounded-xl p-4 border border-slate-200 hover:border-orange-300 hover:shadow-md transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="w-8 h-8 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center text-sm font-bold">
+                              {index + 1}
+                            </span>
+                            <div className="flex-1">
+                              <h4 className="font-bold text-slate-900">{campaign.title}</h4>
+                              <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                                {campaign.category && (
+                                  <span>{campaign.category}</span>
+                                )}
+                                {campaign.region && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {campaign.region}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm">
+                            <div className="text-center">
+                              <p className="text-xs text-slate-500 mb-1">참여자</p>
+                              <p className="font-bold text-slate-900">{campaign.participants.toLocaleString()}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-slate-500 mb-1">완료율</p>
+                              <p className="font-bold text-emerald-600">{campaign.completionRate}%</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-slate-500 mb-1">완료 수</p>
+                              <p className="font-bold text-slate-900">{campaign.completed.toLocaleString()}</p>
+                            </div>
+                            {campaign.co2Reduction !== undefined && (
+                              <div className="text-center">
+                                <p className="text-xs text-slate-500 mb-1">CO2</p>
+                                <p className="font-bold text-teal-600">{campaign.co2Reduction.toLocaleString()}kg</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              ) : (
+                <div className="text-center text-slate-400 py-20 bg-white rounded-xl border border-dashed border-slate-200">
+                  캠페인 데이터가 없습니다
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* 차트 상세 드로어 */}
+      {showChartDetailDrawer && chartDetailData && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-end animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl h-full shadow-2xl animate-in slide-in-from-right duration-300 overflow-hidden flex flex-col">
+            {/* 드로어 헤더 */}
+            <div className="bg-white px-6 py-4 flex justify-between items-center border-b border-slate-200">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  {chartDetailData.type === 'category' && `카테고리: ${chartDetailData.value}`}
+                  {chartDetailData.type === 'region' && `지역: ${chartDetailData.value}`}
+                  {chartDetailData.type === 'date' && `날짜: ${new Date(chartDetailData.value).toLocaleDateString('ko-KR')}`}
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">상세 통계</p>
+              </div>
+              <button
+                onClick={() => setShowChartDetailDrawer(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 드로어 컨텐츠 */}
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+              <div className="space-y-6">
+                {/* 통계 카드 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl p-5 border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-5 h-5 text-blue-600" />
+                      <span className="text-sm font-medium text-slate-500">참여자</span>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900">{chartDetailData.participants?.toLocaleString() || '0'}</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="w-5 h-5 text-emerald-600" />
+                      <span className="text-sm font-medium text-slate-500">완료 수</span>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900">{chartDetailData.completed?.toLocaleString() || '0'}</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-5 h-5 text-purple-600" />
+                      <span className="text-sm font-medium text-slate-500">완료율</span>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900">{chartDetailData.completionRate || '0'}%</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Leaf className="w-5 h-5 text-teal-600" />
+                      <span className="text-sm font-medium text-slate-500">CO2 절감</span>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900">{chartDetailData.co2Reduction?.toLocaleString() || '0'}kg</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 차트 상세 드로어 */}
+      {showChartDetailDrawer && chartDetailData && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-end animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl h-full shadow-2xl animate-in slide-in-from-right duration-300 overflow-hidden flex flex-col">
+            {/* 드로어 헤더 */}
+            <div className="bg-white px-6 py-4 flex justify-between items-center border-b border-slate-200">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  {chartDetailData.type === 'category' && `카테고리: ${chartDetailData.value}`}
+                  {chartDetailData.type === 'region' && `지역: ${chartDetailData.value}`}
+                  {chartDetailData.type === 'date' && `날짜: ${new Date(chartDetailData.value).toLocaleDateString('ko-KR')}`}
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">상세 통계</p>
+              </div>
+              <button
+                onClick={() => setShowChartDetailDrawer(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 드로어 컨텐츠 */}
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+              <div className="space-y-6">
+                {/* 통계 카드 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl p-5 border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-5 h-5 text-blue-600" />
+                      <span className="text-sm font-medium text-slate-500">참여자</span>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900">{chartDetailData.participants?.toLocaleString() || '0'}</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="w-5 h-5 text-emerald-600" />
+                      <span className="text-sm font-medium text-slate-500">완료 수</span>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900">{chartDetailData.completed?.toLocaleString() || '0'}</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-5 h-5 text-purple-600" />
+                      <span className="text-sm font-medium text-slate-500">완료율</span>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900">{chartDetailData.completionRate || '0'}%</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Leaf className="w-5 h-5 text-teal-600" />
+                      <span className="text-sm font-medium text-slate-500">CO2 절감</span>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900">{chartDetailData.co2Reduction?.toLocaleString() || '0'}kg</p>
+                  </div>
                 </div>
               </div>
             </div>

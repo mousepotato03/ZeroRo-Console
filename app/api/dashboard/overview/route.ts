@@ -263,11 +263,13 @@ export async function GET(request: NextRequest) {
     });
 
     let topCategory = null;
+    let topCategoryCompleted = 0;
     let maxCompleted = 0;
     categoryCompletionMap.forEach((completed, category) => {
       if (completed > maxCompleted) {
         maxCompleted = completed;
         topCategory = category;
+        topCategoryCompleted = completed;
       }
     });
 
@@ -290,11 +292,13 @@ export async function GET(request: NextRequest) {
     });
 
     let topRegion = null;
+    let topRegionParticipants = 0;
     let maxRegionParticipants = 0;
     regionMap.forEach((users, region) => {
       if (users.size > maxRegionParticipants) {
         maxRegionParticipants = users.size;
         topRegion = region;
+        topRegionParticipants = users.size;
       }
     });
 
@@ -312,6 +316,7 @@ export async function GET(request: NextRequest) {
         monthlyGrowth,
         weeklyNewParticipants,
         topCampaign: topCampaign ? {
+          id: topCampaign.id,
           title: topCampaign.title,
           participants: topCampaign.participants,
           completed: topCampaign.completed,
@@ -320,7 +325,9 @@ export async function GET(request: NextRequest) {
         weeklyTrend,
         categoryDistribution,
         topCategory,
+        topCategoryCompleted,
         topRegion,
+        topRegionParticipants,
         campaignCompletionRate
       }
     });
