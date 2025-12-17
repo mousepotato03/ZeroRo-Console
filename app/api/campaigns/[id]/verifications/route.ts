@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/supabase/server';
+import { createAdminClient } from '@/app/lib/supabase/admin';
 
 // GET - 캠페인 검수 대상 조회 (모든 미션을 PENDING_VERIFICATION 상태로 완료한 사용자)
 export async function GET(
@@ -92,15 +93,49 @@ export async function GET(
       userLogsMap.get(userId)!.push(log);
     });
 
+    // 모든 사용자의 이메일 정보 조회 (Admin Client 사용)
+    const userIds = Array.from(userLogsMap.keys());
+    const userEmailMap = new Map<string, string>();
+
+    if (userIds.length > 0) {
+      const supabaseAdmin = createAdminClient();
+      // 개별 사용자 이메일 조회
+      for (const userId of userIds) {
+        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (userData?.user?.email) {
+          userEmailMap.set(userId, userData.user.email);
+        }
+      }
+    }
+
+    // 보상 발송 추적 정보 조회
+    const { data: rewardTracking } = await supabase
+      .from('campaign_reward_tracking')
+      .select('user_id, reward_sent, sent_at, note')
+      .eq('campaign_id', campaignId);
+
+    const rewardTrackingMap = new Map<string, { rewardSent: boolean; sentAt: string | null; note: string | null }>();
+    (rewardTracking || []).forEach(rt => {
+      rewardTrackingMap.set(rt.user_id, {
+        rewardSent: rt.reward_sent,
+        sentAt: rt.sent_at,
+        note: rt.note
+      });
+    });
+
     // 모든 미션을 완료(PENDING_VERIFICATION)한 사용자 필터링
     const verifications: Array<{
       userId: string;
       username: string | null;
       userImg: string | null;
+      email: string | null; // 구글 이메일
       status: 'pending' | 'approved' | 'rejected';
       totalPoints: number;
       aiQualified: boolean | null; // AI 검증 결과 (null = 검증 없음)
       aiReason: string | null; // AI 판정 이유
+      rewardSent: boolean; // 보상 발송 여부
+      rewardSentAt: string | null; // 보상 발송 시간
+      rewardNote: string | null; // 보상 메모
       missions: Array<{
         missionId: number;
         missionTitle: string;
@@ -188,14 +223,19 @@ export async function GET(
         if (hasCompletedAll) status = 'approved';
         if (hasFailedAll) status = 'rejected';
 
+        const rewardInfo = rewardTrackingMap.get(userId);
         verifications.push({
           userId,
           username: profileData?.username || null,
           userImg: profileData?.user_img || null,
+          email: userEmailMap.get(userId) || null,
           status,
           totalPoints,
           aiQualified,
           aiReason,
+          rewardSent: rewardInfo?.rewardSent || false,
+          rewardSentAt: rewardInfo?.sentAt || null,
+          rewardNote: rewardInfo?.note || null,
           missions,
           submittedAt: latestCompletedAt || null
         });

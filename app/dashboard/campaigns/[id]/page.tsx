@@ -19,7 +19,12 @@ import {
   HelpCircle,
   Navigation,
   Bot,
-  Sparkles
+  Sparkles,
+  Mail,
+  Copy,
+  Gift,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { Button, Card, CardContent, CardHeader, CardTitle, Badge } from '../../../components/UiKit';
@@ -101,15 +106,21 @@ interface Verification {
   userId: string;
   username: string | null;
   userImg: string | null;
+  email: string | null; // 구글 이메일
   status: 'pending' | 'approved' | 'rejected';
   totalPoints: number;
   aiQualified: boolean | null; // AI 검증 결과 (null = 검증 없음)
   aiReason: string | null; // AI 판정 이유
+  rewardSent: boolean; // 보상 발송 여부
+  rewardSentAt: string | null; // 보상 발송 시간
+  rewardNote: string | null; // 보상 메모
   missions: VerificationMission[];
   submittedAt: string | null;
 }
 
 type AiFilterType = 'all' | 'qualified' | 'not_qualified';
+type StatusFilterType = 'all' | 'pending' | 'approved' | 'rejected';
+type RewardFilterType = 'all' | 'sent' | 'not_sent';
 
 type TabType = 'info' | 'stats' | 'verification';
 
@@ -127,7 +138,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingUser, setProcessingUser] = useState<string | null>(null);
+  const [processingReward, setProcessingReward] = useState<string | null>(null);
   const [aiFilter, setAiFilter] = useState<AiFilterType>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterType>('all');
+  const [rewardFilter, setRewardFilter] = useState<RewardFilterType>('all');
 
   // 캠페인 정보 로드
   const fetchCampaign = async () => {
@@ -199,6 +213,44 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  // 보상 발송 토글
+  const handleRewardToggle = async (userId: string, currentSent: boolean, e: React.MouseEvent) => {
+    e.stopPropagation(); // 카드 클릭 이벤트 방지
+    if (processingReward) return;
+    setProcessingReward(userId);
+
+    try {
+      const res = await fetch(`/api/campaigns/${id}/reward-tracking`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, rewardSent: !currentSent })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '처리 실패');
+
+      // 로컬 상태 업데이트
+      setVerifications(prev => prev.map(v =>
+        v.userId === userId
+          ? { ...v, rewardSent: !currentSent, rewardSentAt: !currentSent ? new Date().toISOString() : null }
+          : v
+      ));
+
+      // 선택된 verification 업데이트
+      if (selectedVerification?.userId === userId) {
+        setSelectedVerification(prev => prev ? {
+          ...prev,
+          rewardSent: !currentSent,
+          rewardSentAt: !currentSent ? new Date().toISOString() : null
+        } : null);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.');
+    } finally {
+      setProcessingReward(null);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -214,6 +266,45 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     setAiFilter(filter);
     fetchVerifications(filter);
   };
+
+  // 상태 + 보상발송 필터가 적용된 verifications
+  const filteredVerifications = useMemo(() => {
+    let result = verifications;
+
+    // 상태 필터
+    if (statusFilter !== 'all') {
+      result = result.filter(v => v.status === statusFilter);
+    }
+
+    // 보상 발송 필터 (승인된 유저만 대상)
+    if (rewardFilter !== 'all') {
+      if (rewardFilter === 'sent') {
+        result = result.filter(v => v.status === 'approved' && v.rewardSent);
+      } else if (rewardFilter === 'not_sent') {
+        result = result.filter(v => v.status === 'approved' && !v.rewardSent);
+      }
+    }
+
+    return result;
+  }, [verifications, statusFilter, rewardFilter]);
+
+  // 상태별 카운트
+  const statusCounts = useMemo(() => ({
+    all: verifications.length,
+    pending: verifications.filter(v => v.status === 'pending').length,
+    approved: verifications.filter(v => v.status === 'approved').length,
+    rejected: verifications.filter(v => v.status === 'rejected').length,
+  }), [verifications]);
+
+  // 보상 발송 카운트 (승인된 유저 중)
+  const rewardCounts = useMemo(() => {
+    const approved = verifications.filter(v => v.status === 'approved');
+    return {
+      all: approved.length,
+      sent: approved.filter(v => v.rewardSent).length,
+      not_sent: approved.filter(v => !v.rewardSent).length,
+    };
+  }, [verifications]);
 
   // 미션별 퍼센트 데이터 계산
   const missionStatsWithPercentage = useMemo(() => {
@@ -661,8 +752,77 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             ))}
           </div>
 
+          {/* 상태 필터 */}
+          <div className="flex items-center gap-2 mb-4">
+            <CheckCircle className="w-5 h-5 text-slate-500" />
+            <span className="text-sm text-slate-600 font-medium mr-2">상태:</span>
+            {[
+              { value: 'all' as const, label: '전체', count: statusCounts.all },
+              { value: 'pending' as const, label: '검수대기', count: statusCounts.pending, color: 'amber' },
+              { value: 'approved' as const, label: '승인됨', count: statusCounts.approved, color: 'emerald' },
+              { value: 'rejected' as const, label: '거부됨', count: statusCounts.rejected, color: 'red' }
+            ].map(filter => (
+              <button
+                key={filter.value}
+                onClick={() => setStatusFilter(filter.value)}
+                className={`
+                  px-3 py-1.5 rounded-full text-sm font-medium transition-all
+                  ${statusFilter === filter.value
+                    ? filter.value === 'approved'
+                      ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-200'
+                      : filter.value === 'rejected'
+                        ? 'bg-red-100 text-red-700 ring-2 ring-red-200'
+                        : filter.value === 'pending'
+                          ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-200'
+                          : 'bg-slate-200 text-slate-700 ring-2 ring-slate-300'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }
+                `}
+              >
+                {filter.label} ({filter.count})
+              </button>
+            ))}
+          </div>
+
+          {/* 보상 발송 필터 (승인된 유저가 있을 때만) */}
+          {statusCounts.approved > 0 && (
+            <div className="flex items-center gap-2 mb-4">
+              <Gift className="w-5 h-5 text-slate-500" />
+              <span className="text-sm text-slate-600 font-medium mr-2">보상:</span>
+              {[
+                { value: 'all' as const, label: '전체', count: rewardCounts.all },
+                { value: 'not_sent' as const, label: '미발송', count: rewardCounts.not_sent, color: 'amber' },
+                { value: 'sent' as const, label: '발송완료', count: rewardCounts.sent, color: 'purple' }
+              ].map(filter => (
+                <button
+                  key={filter.value}
+                  onClick={() => {
+                    setRewardFilter(filter.value);
+                    // 보상 필터 선택 시 상태 필터를 승인됨으로 변경
+                    if (filter.value !== 'all') {
+                      setStatusFilter('approved');
+                    }
+                  }}
+                  className={`
+                    px-3 py-1.5 rounded-full text-sm font-medium transition-all
+                    ${rewardFilter === filter.value
+                      ? filter.value === 'sent'
+                        ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-200'
+                        : filter.value === 'not_sent'
+                          ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-200'
+                          : 'bg-slate-200 text-slate-700 ring-2 ring-slate-300'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }
+                  `}
+                >
+                  {filter.label} ({filter.count})
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {verifications.length === 0 ? (
+            {filteredVerifications.length === 0 ? (
               <div className="col-span-full">
                 <Card>
                   <CardContent className="py-12 text-center">
@@ -675,7 +835,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 </Card>
               </div>
             ) : (
-              verifications.map(verification => (
+              filteredVerifications.map(verification => (
                 <div
                   key={verification.userId}
                   onClick={() => setSelectedVerification(verification)}
@@ -719,6 +879,42 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                           <p className="text-sm text-slate-500">{verification.totalPoints}P</p>
                         </div>
                       </div>
+
+                      {/* 승인된 유저의 이메일 표시 */}
+                      {verification.status === 'approved' && verification.email && (
+                        <div className="flex items-center gap-2 mb-3 p-2 bg-emerald-50 rounded-lg">
+                          <Mail className="w-4 h-4 text-emerald-600" />
+                          <span className="text-sm text-emerald-700 font-medium truncate">
+                            {verification.email}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 승인된 유저의 보상 발송 체크박스 */}
+                      {verification.status === 'approved' && (
+                        <button
+                          onClick={(e) => handleRewardToggle(verification.userId, verification.rewardSent, e)}
+                          disabled={processingReward === verification.userId}
+                          className={`
+                            flex items-center gap-2 mb-3 p-2 rounded-lg w-full transition-colors
+                            ${verification.rewardSent
+                              ? 'bg-purple-50 hover:bg-purple-100'
+                              : 'bg-slate-50 hover:bg-slate-100'
+                            }
+                            ${processingReward === verification.userId ? 'opacity-50' : ''}
+                          `}
+                        >
+                          {verification.rewardSent ? (
+                            <CheckSquare className="w-4 h-4 text-purple-600" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-400" />
+                          )}
+                          <Gift className={`w-4 h-4 ${verification.rewardSent ? 'text-purple-600' : 'text-slate-400'}`} />
+                          <span className={`text-sm font-medium ${verification.rewardSent ? 'text-purple-700' : 'text-slate-500'}`}>
+                            {verification.rewardSent ? '보상 발송 완료' : '보상 미발송'}
+                          </span>
+                        </button>
+                      )}
 
                       <div className="space-y-2 mb-4">
                         <div className="flex justify-between text-sm">
@@ -785,6 +981,50 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                           </>
                         )}
                       </div>
+                      {/* 승인된 유저의 이메일 표시 */}
+                      {selectedVerification.status === 'approved' && selectedVerification.email && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Mail className="w-4 h-4 text-emerald-600" />
+                          <span className="text-sm text-emerald-700 font-medium">
+                            {selectedVerification.email}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedVerification.email!);
+                              alert('이메일이 복사되었습니다.');
+                            }}
+                            className="p-1 hover:bg-emerald-100 rounded transition-colors"
+                            title="이메일 복사"
+                          >
+                            <Copy className="w-4 h-4 text-emerald-600" />
+                          </button>
+                        </div>
+                      )}
+                      {/* 승인된 유저의 보상 발송 체크박스 */}
+                      {selectedVerification.status === 'approved' && (
+                        <button
+                          onClick={(e) => handleRewardToggle(selectedVerification.userId, selectedVerification.rewardSent, e)}
+                          disabled={processingReward === selectedVerification.userId}
+                          className={`
+                            flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg transition-colors
+                            ${selectedVerification.rewardSent
+                              ? 'bg-purple-100 hover:bg-purple-200'
+                              : 'bg-slate-100 hover:bg-slate-200'
+                            }
+                            ${processingReward === selectedVerification.userId ? 'opacity-50' : ''}
+                          `}
+                        >
+                          {selectedVerification.rewardSent ? (
+                            <CheckSquare className="w-4 h-4 text-purple-600" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-400" />
+                          )}
+                          <Gift className={`w-4 h-4 ${selectedVerification.rewardSent ? 'text-purple-600' : 'text-slate-400'}`} />
+                          <span className={`text-sm font-medium ${selectedVerification.rewardSent ? 'text-purple-700' : 'text-slate-500'}`}>
+                            {selectedVerification.rewardSent ? '보상 발송 완료' : '보상 미발송'}
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </div>
                   <button
